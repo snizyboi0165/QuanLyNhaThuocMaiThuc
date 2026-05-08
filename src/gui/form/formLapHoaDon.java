@@ -695,6 +695,12 @@ public class formLapHoaDon extends JPanel {
             txtSdtKH.requestFocus();
             return;
         }
+        if (!sdt.matches("^(\\+84|0)\\d{9}$")) {
+            JOptionPane.showMessageDialog(this, "Số điện thoại không hợp lệ!\nĐịnh dạng: 0xxxxxxxxx hoặc +84xxxxxxxxx", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
+            txtSdtKH.requestFocus();
+            txtSdtKH.selectAll();
+            return;
+        }
         try {
             KhachHang kh = khachHangDAO.getKhachHangTheoSDT(sdt);
             if (kh != null) {
@@ -902,35 +908,62 @@ public class formLapHoaDon extends JPanel {
             showWarning("Giỏ hàng trống!");
             return;
         }
+
+        // Validate số điện thoại
         String sdt = txtSdtKH.getText().trim();
-        if (sdt.isEmpty()) sdt = "0000000000";
-        
+        if (!sdt.isEmpty()) {
+            if (!sdt.matches("^(\\+84|0)\\d{9}$")) {
+                showWarning("Số điện thoại không hợp lệ!\nVui lòng nhập đúng định dạng: 0xxxxxxxxx hoặc +84xxxxxxxxx");
+                txtSdtKH.requestFocus();
+                txtSdtKH.selectAll();
+                return;
+            }
+        } else {
+            sdt = "0000000000";
+        }
+
+        // Validate tiền nhận vào
         String tienNhanVaoStr = txtTienKhachDua.getText().trim().replace(",", "");
         double tienNhanVao = 0;
-        try {
-            if (!tienNhanVaoStr.equals("Bỏ qua để thanh toán online") && !tienNhanVaoStr.isEmpty()) {
+        if (!tienNhanVaoStr.equals("Bỏ qua để thanh toán online") && !tienNhanVaoStr.isEmpty()) {
+            try {
                 tienNhanVao = Double.parseDouble(tienNhanVaoStr);
-                if (tienNhanVao < tongTien) {
-                    showWarning("Tiền nhận vào chưa đủ!");
-                    return;
-                }
+            } catch (NumberFormatException e) {
+                showWarning("Tiền nhận vào không hợp lệ!\nVui lòng nhập số.");
+                txtTienKhachDua.requestFocus();
+                txtTienKhachDua.selectAll();
+                return;
             }
-            String tenKhachHang = txtHoTenKH.getText().trim();
-            if (tenKhachHang.isBlank()) tenKhachHang = "Khách lẻ";
-            String maHoaDon = txtMaHoaDon.getText();
-            
-            Window window = SwingUtilities.getWindowAncestor(this);
-            Frame frame = (window instanceof Frame) ? (Frame) window : null;
-            
-            DialogThanhToanHoaDon dialog = new DialogThanhToanHoaDon(
-                frame, maHoaDon, tenKhachHang, sdt, dsChiTietHoaDon, tongTien, tienNhanVao, taiKhoan.getNhanVien().getMaNV(), null
-            );
-            dialog.setVisible(true);
-            if (dialog.isConfirmed()) resetForm();
-            
-        } catch (NumberFormatException e) {
-            e.printStackTrace();
+            if (tienNhanVao < 0) {
+                showWarning("Tiền nhận vào không được âm!");
+                txtTienKhachDua.requestFocus();
+                return;
+            }
+            if (tienNhanVao < tongTien) {
+                showWarning("Tiền nhận vào chưa đủ!\nCần: " + String.format("%,.0f VNĐ", tongTien));
+                txtTienKhachDua.requestFocus();
+                return;
+            }
         }
+
+        // Validate nhân viên
+        if (taiKhoan.getNhanVien() == null || taiKhoan.getNhanVien().getMaNV() == null) {
+            showError("Không xác định được nhân viên đang đăng nhập!");
+            return;
+        }
+
+        String tenKhachHang = txtHoTenKH.getText().trim();
+        if (tenKhachHang.isBlank()) tenKhachHang = "Khách lẻ";
+        String maHoaDon = txtMaHoaDon.getText();
+
+        Window window = SwingUtilities.getWindowAncestor(this);
+        Frame frame = (window instanceof Frame) ? (Frame) window : null;
+
+        DialogThanhToanHoaDon dialog = new DialogThanhToanHoaDon(
+            frame, maHoaDon, tenKhachHang, sdt, dsChiTietHoaDon, tongTien, tienNhanVao, taiKhoan.getNhanVien().getMaNV(), null
+        );
+        dialog.setVisible(true);
+        if (dialog.isConfirmed()) resetForm();
     }
 
     private void txtTienNhanVaoKeyReleased(KeyEvent evt) {
