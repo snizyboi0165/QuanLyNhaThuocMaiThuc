@@ -1,4 +1,4 @@
-﻿package gui.form;
+package gui.form;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -65,6 +65,9 @@ public class FormThongKeLoiNhuan extends JPanel implements ActionListener {
     private JTable tableTop;
     private DefaultTableModel modelTop;
     private JComboBox<Integer> cboTopN;
+    private JTable tableBanCham;
+    private DefaultTableModel modelBanCham;
+    private JComboBox<Integer> cboBottomN;
     
     // Tab 5: Thống kê theo thời gian
     private JTable tableTheoThg;
@@ -112,9 +115,12 @@ public class FormThongKeLoiNhuan extends JPanel implements ActionListener {
         
         // Tab 4: Top sản phẩm
         JPanel panelTop = taoTabTop();
+        JPanel panelBanCham = taoTabBanCham();
         tabbedPane.addTab("Top sản phẩm", panelTop);
         
         // Tab 5: Thống kê theo thời gian
+        tabbedPane.addTab("Bán chậm", panelBanCham);
+
         JPanel panelTheoThg = taoTabTheoThg();
         tabbedPane.addTab("Thống kê theo thời gian", panelTheoThg);
         
@@ -297,7 +303,7 @@ public class FormThongKeLoiNhuan extends JPanel implements ActionListener {
         cboTopN.setSelectedItem(10);
         cboTopN.setPreferredSize(new Dimension(80, 30));
         controlPanel.add(cboTopN);
-        controlPanel.add(new JLabel("sản phẩm có doanh thu cao nhất"));
+        controlPanel.add(new JLabel("sản phẩm bán chạy nhất"));
         
         panel.add(controlPanel, BorderLayout.NORTH);
         
@@ -318,6 +324,36 @@ public class FormThongKeLoiNhuan extends JPanel implements ActionListener {
         return panel;
     }
     
+    private JPanel taoTabBanCham() {
+        JPanel panel = new JPanel(new BorderLayout());
+        
+        JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        controlPanel.setBackground(Color.WHITE);
+        controlPanel.add(new JLabel("Bottom"));
+        cboBottomN = new JComboBox<>(new Integer[]{5, 10, 15, 20});
+        cboBottomN.setSelectedItem(10);
+        cboBottomN.setPreferredSize(new Dimension(80, 30));
+        controlPanel.add(cboBottomN);
+        controlPanel.add(new JLabel("sản phẩm"));
+        
+        panel.add(controlPanel, BorderLayout.NORTH);
+        
+        String[] columns = {"Xếp hạng", "Tên sản phẩm", "Số lượng bán", "Doanh thu"};
+        modelBanCham = new DefaultTableModel(columns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        tableBanCham = new JTable(modelBanCham);
+        setupTable(tableBanCham);
+        
+        JScrollPane scrollPane = new JScrollPane(tableBanCham);
+        panel.add(scrollPane, BorderLayout.CENTER);
+        
+        return panel;
+    }
+
     private JPanel taoTabTheoThg() {
         JPanel panel = new JPanel(new BorderLayout());
         
@@ -380,6 +416,7 @@ public class FormThongKeLoiNhuan extends JPanel implements ActionListener {
     private void addActionListeners() {
         btnTimKiem.addActionListener(this);
         cboTopN.addActionListener(e -> hienThiTopSanPham());
+        cboBottomN.addActionListener(e -> hienThiSanPhamBanCham());
     }
     
     @Override
@@ -440,6 +477,7 @@ public class FormThongKeLoiNhuan extends JPanel implements ActionListener {
             hienThiThongKeKhachHang(tuNgay, denNgay);
             hienThiThongKeNhanVien(tuNgay, denNgay);
             hienThiTopSanPham();
+            hienThiSanPhamBanCham();
             hienThiThongKeTheoThg(tuNgay, denNgay);
             
             JOptionPane.showMessageDialog(
@@ -468,6 +506,7 @@ public class FormThongKeLoiNhuan extends JPanel implements ActionListener {
         modelKhachHang.setRowCount(0);
         modelNhanVien.setRowCount(0);
         modelTop.setRowCount(0);
+        modelBanCham.setRowCount(0);
         modelTheoThg.setRowCount(0);
         
         lblTongDoanhThuSP.setText("0 ₫");
@@ -485,6 +524,7 @@ public class FormThongKeLoiNhuan extends JPanel implements ActionListener {
             hienThiThongKeKhachHang(tuNgay, denNgay);
             hienThiThongKeNhanVien(tuNgay, denNgay);
             hienThiTopSanPham();
+            hienThiSanPhamBanCham();
             hienThiThongKeTheoThg(tuNgay, denNgay);
         } catch (SQLException ex) {
             ex.printStackTrace();
@@ -573,6 +613,34 @@ public class FormThongKeLoiNhuan extends JPanel implements ActionListener {
         }
     }
     
+    private void hienThiSanPhamBanCham() {
+        try {
+            if (dateFrom.getDate() == null || dateTo.getDate() == null) {
+                return;
+            }
+            
+            LocalDate tuNgay = dateFrom.getDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+            LocalDate denNgay = dateTo.getDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+            int bottomN = (Integer) cboBottomN.getSelectedItem();
+            
+            modelBanCham.setRowCount(0);
+            
+            ArrayList<TopSanPham> danhSach = dao.thongKeSanPhamBanCham(tuNgay, denNgay, bottomN);
+            
+            for (int i = 0; i < danhSach.size(); i++) {
+                TopSanPham sp = danhSach.get(i);
+                modelBanCham.addRow(new Object[]{
+                    i + 1,
+                    sp.getTenThuoc(),
+                    numberFormat.format(sp.getSoLuongBan()),
+                    currencyFormat.format(sp.getDoanhThu())
+                });
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+    }
+
     private void hienThiThongKeTheoThg(LocalDate tuNgay, LocalDate denNgay) throws SQLException {
         modelTheoThg.setRowCount(0);
         

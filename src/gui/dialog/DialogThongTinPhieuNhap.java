@@ -1,323 +1,214 @@
-﻿package gui.dialog;
+package gui.dialog;
 
-import java.awt.*;
-import java.sql.SQLException;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.Frame;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import javax.swing.*;
+
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
+import dao.NhaCungCapDAO;
 import dao.NhanVienDAO;
 import dao.PhieuNhapThuocDAO;
 import dao.ThuocDAO;
-import entity.PhieuNhapThuoc;
 import entity.ChiTietNhapThuoc;
+import entity.NhaCungCap;
+import entity.NhanVien;
+import entity.PhieuNhapThuoc;
 import entity.Thuoc;
 
 public class DialogThongTinPhieuNhap extends JDialog {
-    private JTable tableChiTiet;
-    private DefaultTableModel tableModel;
-    private JLabel lblTongTien;
-    private JButton btnDong;
-    
-    private PhieuNhapThuocDAO pnhDAO;
-    private ThuocDAO thuocDAO;
-    private PhieuNhapThuoc phieuNhap;
-    private NhanVienDAO nvDAO;
-    
+    private static final Color PRIMARY = new Color(0, 0, 205);
+    private static final Color HEADER_BLUE = new Color(0, 102, 204);
+    private static final Color FOOTER_BG = new Color(230, 245, 245);
+
+    private final PhieuNhapThuoc phieuNhap;
+    private final PhieuNhapThuocDAO pnhDAO = new PhieuNhapThuocDAO();
+    private final ThuocDAO thuocDAO = new ThuocDAO();
+    private final NhanVienDAO nvDAO = new NhanVienDAO();
+    private final NhaCungCapDAO nccDAO = new NhaCungCapDAO();
+    private final DefaultTableModel model;
+    private final JLabel lblTongTien;
+    private final SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+
     public DialogThongTinPhieuNhap(Frame parent, PhieuNhapThuoc pnh) {
         super(parent, "Chi tiết phiếu nhập thuốc", true);
         this.phieuNhap = pnh;
-        this.pnhDAO = new PhieuNhapThuocDAO();
-        this.thuocDAO = new ThuocDAO();
-        this.nvDAO = new NhanVienDAO();
-        initComponents();
-        loadData();
-        setLocationRelativeTo(parent);
-    }
-    
-    private void initComponents() {
-        setSize(1000, 700);
+        setSize(980, 620);
         setResizable(false);
-        getContentPane().setBackground(new Color(230, 245, 245));
-        setLayout(new BorderLayout(10, 10));
-        
-        // Title Panel
-        JPanel titlePanel = new JPanel();
-        titlePanel.setBackground(new Color(0, 0, 205));
-        titlePanel.setPreferredSize(new Dimension(1000, 60));
-        JLabel lblTitle = new JLabel("CHI TIẾT PHIẾU NHẬP THUỐC");
-        lblTitle.setFont(new Font("Roboto", Font.BOLD, 22));
+        setLayout(new BorderLayout(0, 0));
+        getContentPane().setBackground(Color.WHITE);
+
+        add(createInfoPanel(), BorderLayout.NORTH);
+
+        JPanel centerPanel = new JPanel(new BorderLayout(0, 10));
+        centerPanel.setBackground(Color.WHITE);
+        centerPanel.setBorder(new EmptyBorder(16, 24, 12, 24));
+
+        JPanel tableTitle = new JPanel(new BorderLayout());
+        tableTitle.setBackground(PRIMARY);
+        tableTitle.setPreferredSize(new Dimension(930, 38));
+        JLabel lblTitle = new JLabel("  DANH SÁCH CHI TIẾT NHẬP THUỐC");
+        lblTitle.setFont(new Font("Roboto", Font.BOLD, 14));
         lblTitle.setForeground(Color.WHITE);
-        titlePanel.add(lblTitle);
-        
-        add(titlePanel, BorderLayout.NORTH);
-        
-        // Info Panel
-        JPanel infoPanel = new JPanel();
-        infoPanel.setBackground(Color.WHITE);
-        infoPanel.setBorder(new LineBorder(new Color(232, 232, 232), 2, true));
-        infoPanel.setPreferredSize(new Dimension(1000, 120));
-        infoPanel.setLayout(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(12, 20, 12, 20);
-        
-        Font labelFont = new Font("Roboto", Font.BOLD, 14);
-        Font valueFont = new Font("Roboto", Font.PLAIN, 14);
-        
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-        
-        // Mã Phiếu
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.weightx = 0.15;
-        JLabel lblMaPhieu = new JLabel("Mã phiếu:");
-        lblMaPhieu.setFont(labelFont);
-        infoPanel.add(lblMaPhieu, gbc);
-        
-        gbc.gridx = 1;
-        gbc.weightx = 0.2;
-        JLabel valueMaPhieu = new JLabel(phieuNhap.getMaPhieuNhap());
-        valueMaPhieu.setFont(valueFont);
-        valueMaPhieu.setForeground(new Color(0, 102, 204));
-        infoPanel.add(valueMaPhieu, gbc);
-        
-        // Nhân viên
-        gbc.gridx = 2;
-        gbc.weightx = 0.15;
-        JLabel lblNhanVien = new JLabel("Nhân viên:");
-        lblNhanVien.setFont(labelFont);
-        infoPanel.add(lblNhanVien, gbc);
-        
-        
-        gbc.gridx = 3;
-        gbc.weightx = 0.2;
-        String tenNV = "N/A";
-		try {
-			tenNV = nvDAO.getNhanVienTheoMa(phieuNhap.getNhanVien().getMaNV()).getTenNV();
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-        JLabel valueNhanVien = new JLabel(tenNV);
-        valueNhanVien.setFont(valueFont);
-        infoPanel.add(valueNhanVien, gbc);
-        
-        // Ngày nhập
-        gbc.gridx = 4;
-        gbc.weightx = 0.15;
-        JLabel lblNgayNhap = new JLabel("Ngày nhập:");
-        lblNgayNhap.setFont(labelFont);
-        infoPanel.add(lblNgayNhap, gbc);
-        
-        gbc.gridx = 5;
-        gbc.weightx = 0.15;
-        JLabel valueNgayNhap = new JLabel(sdf.format(phieuNhap.getNgayNhap()));
-        valueNgayNhap.setFont(valueFont);
-        infoPanel.add(valueNgayNhap, gbc);
-        
-        // Nhà cung cấp (row 2)
-        gbc.gridx = 0;
-        gbc.gridy = 1;
-        gbc.weightx = 0.15;
-        JLabel lblNCC = new JLabel("Nhà cung cấp:");
-        lblNCC.setFont(labelFont);
-        infoPanel.add(lblNCC, gbc);
-        
-        gbc.gridx = 1;
-        gbc.weightx = 0.35;
-        String tenNCC = phieuNhap.getNhaCungCap() != null ? phieuNhap.getNhaCungCap().getTenNCC() : "N/A";
-        JLabel valueNCC = new JLabel(tenNCC);
-        valueNCC.setFont(valueFont);
-        infoPanel.add(valueNCC, gbc);
-        
-        // Mã nhân viên
-        gbc.gridx = 2;
-        gbc.weightx = 0.15;
-        JLabel lblMaNV = new JLabel("Mã NV:");
-        lblMaNV.setFont(labelFont);
-        infoPanel.add(lblMaNV, gbc);
-        
-        gbc.gridx = 3;
-        gbc.weightx = 0.15;
-        String maNV = phieuNhap.getNhanVien() != null ? phieuNhap.getNhanVien().getMaNV() : "N/A";
-        JLabel valueMaNV = new JLabel(maNV);
-        valueMaNV.setFont(valueFont);
-        valueMaNV.setForeground(new Color(0, 102, 204));
-        infoPanel.add(valueMaNV, gbc);
-        
-        // Mã nhà cung cấp
-        gbc.gridx = 4;
-        gbc.weightx = 0.15;
-        JLabel lblMaNCC = new JLabel("Mã NCC:");
-        lblMaNCC.setFont(labelFont);
-        infoPanel.add(lblMaNCC, gbc);
-        
-        gbc.gridx = 5;
-        gbc.weightx = 0.15;
-        String maNCC = phieuNhap.getNhaCungCap() != null ? phieuNhap.getNhaCungCap().getMaNCC() : "N/A";
-        JLabel valueMaNCC = new JLabel(maNCC);
-        valueMaNCC.setFont(valueFont);
-        valueMaNCC.setForeground(new Color(0, 102, 204));
-        infoPanel.add(valueMaNCC, gbc);
-        
-        add(infoPanel, BorderLayout.NORTH);
-        
-        // Table Panel
-        JPanel tablePanel = new JPanel();
-        tablePanel.setBackground(Color.WHITE);
-        tablePanel.setBorder(new EmptyBorder(20, 30, 20, 30));
-        tablePanel.setLayout(new BorderLayout(0, 10));
-        
-        JPanel titleTablePanel = new JPanel();
-        titleTablePanel.setBackground(new Color(0, 0, 205));
-        titleTablePanel.setPreferredSize(new Dimension(1000, 40));
-        titleTablePanel.setLayout(new BorderLayout());
-        JLabel lblTitleTable = new JLabel("DANH SÁCH CHI TIẾT NHẬP THUỐC");
-        lblTitleTable.setFont(new Font("Roboto", Font.BOLD, 15));
-        lblTitleTable.setForeground(Color.WHITE);
-        lblTitleTable.setBorder(new EmptyBorder(0, 10, 0, 10));
-        titleTablePanel.add(lblTitleTable, BorderLayout.WEST);
-        
-        tablePanel.add(titleTablePanel, BorderLayout.NORTH);
-        
-        String[] columnNames = {"STT", "Mã thuốc", "Tên thuốc", "Số lượng", "Đơn giá", "Thành tiền"};
-        tableModel = new DefaultTableModel(columnNames, 0) {
+        tableTitle.add(lblTitle, BorderLayout.WEST);
+        centerPanel.add(tableTitle, BorderLayout.NORTH);
+
+        String[] cols = { "STT", "Mã lô", "Số lô", "Mã thuốc", "Tên thuốc", "NSX", "HSD",
+                "Số lượng", "Đơn giá", "Thành tiền" };
+        model = new DefaultTableModel(cols, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
-        
-        tableChiTiet = new JTable(tableModel);
-        tableChiTiet.setRowHeight(35);
-        tableChiTiet.setFont(new Font("Roboto", Font.PLAIN, 13));
-        tableChiTiet.getTableHeader().setFont(new Font("Roboto", Font.BOLD, 13));
-        tableChiTiet.getTableHeader().setBackground(new Color(0, 102, 204));
-        tableChiTiet.getTableHeader().setForeground(Color.WHITE);
-        tableChiTiet.setShowHorizontalLines(true);
-        tableChiTiet.setGridColor(new Color(220, 220, 220));
-        
-        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
-        centerRenderer.setHorizontalAlignment(JLabel.CENTER);
-        
-        DefaultTableCellRenderer rightRenderer = new DefaultTableCellRenderer();
-        rightRenderer.setHorizontalAlignment(JLabel.RIGHT);
-        
-        // Set renderer cho các cột
-        for (int i = 0; i < tableModel.getColumnCount(); i++) {
-            if (i == 1 || i == 2) {
-                // Mã thuốc và Tên thuốc
-                tableChiTiet.getColumnModel().getColumn(i).setCellRenderer(new DefaultTableCellRenderer());
-            } else {
-                // Các cột khác
-                if (i == 0) {
-                    tableChiTiet.getColumnModel().getColumn(i).setCellRenderer(centerRenderer);
-                    tableChiTiet.getColumnModel().getColumn(i).setPreferredWidth(40);
-                } else if (i == 2) {
-                    tableChiTiet.getColumnModel().getColumn(i).setPreferredWidth(200);
-                } else {
-                    tableChiTiet.getColumnModel().getColumn(i).setCellRenderer(rightRenderer);
-                }
-            }
-        }
-        
-        tableChiTiet.getColumnModel().getColumn(0).setPreferredWidth(40);
-        tableChiTiet.getColumnModel().getColumn(1).setPreferredWidth(80);
-        tableChiTiet.getColumnModel().getColumn(2).setPreferredWidth(200);
-        tableChiTiet.getColumnModel().getColumn(3).setPreferredWidth(80);
-        tableChiTiet.getColumnModel().getColumn(4).setPreferredWidth(100);
-        tableChiTiet.getColumnModel().getColumn(5).setPreferredWidth(100);
-        
-        JScrollPane tableScroll = new JScrollPane(tableChiTiet);
-        tableScroll.setBackground(Color.WHITE);
-        tablePanel.add(tableScroll, BorderLayout.CENTER);
-        
-        // Total Panel
-        JPanel totalPanel = new JPanel();
+        JTable table = new JTable(model);
+        table.setFont(new Font("Roboto", Font.PLAIN, 12));
+        table.setRowHeight(30);
+        table.getTableHeader().setFont(new Font("Roboto", Font.BOLD, 12));
+        table.getTableHeader().setBackground(HEADER_BLUE);
+        table.getTableHeader().setForeground(Color.WHITE);
+        table.setGridColor(new Color(225, 225, 225));
+        table.setShowHorizontalLines(true);
+        centerTableCells(table);
+
+        JScrollPane scroll = new JScrollPane(table);
+        scroll.setBorder(new LineBorder(new Color(190, 210, 230), 1));
+        centerPanel.add(scroll, BorderLayout.CENTER);
+
+        JPanel totalPanel = new JPanel(new BorderLayout());
         totalPanel.setBackground(Color.WHITE);
-        totalPanel.setBorder(new LineBorder(new Color(200, 200, 200), 1));
-        totalPanel.setPreferredSize(new Dimension(1000, 60));
-        totalPanel.setLayout(new BorderLayout());
-        
-        JLabel lblTongLabel = new JLabel("TỔNG TIỀN NHẬP:");
-        lblTongLabel.setFont(new Font("Roboto", Font.BOLD, 15));
-        lblTongLabel.setBorder(new EmptyBorder(0, 20, 0, 0));
-        
-        lblTongTien = new JLabel("0.00 VNĐ");
-        lblTongTien.setFont(new Font("Roboto", Font.BOLD, 16));
-        lblTongTien.setForeground(new Color(220, 20, 60)); // Crimson red
-        lblTongTien.setBorder(new EmptyBorder(0, 0, 0, 20));
+        totalPanel.setBorder(new LineBorder(new Color(220, 220, 220), 1));
+        totalPanel.setPreferredSize(new Dimension(930, 48));
+        JLabel lblTotalTitle = new JLabel("  TỔNG TIỀN NHẬP:");
+        lblTotalTitle.setFont(new Font("Roboto", Font.BOLD, 13));
+        lblTongTien = new JLabel("0 VNĐ  ");
         lblTongTien.setHorizontalAlignment(JLabel.RIGHT);
-        
-        totalPanel.add(lblTongLabel, BorderLayout.WEST);
+        lblTongTien.setFont(new Font("Roboto", Font.BOLD, 14));
+        lblTongTien.setForeground(Color.RED);
+        totalPanel.add(lblTotalTitle, BorderLayout.WEST);
         totalPanel.add(lblTongTien, BorderLayout.EAST);
-        
-        tablePanel.add(totalPanel, BorderLayout.SOUTH);
-        
-        add(tablePanel, BorderLayout.CENTER);
-        
-        // Button Panel
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.setBackground(new Color(230, 245, 245));
-        buttonPanel.setPreferredSize(new Dimension(1000, 80));
-        buttonPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 20));
-        
-        btnDong = new JButton("ĐÓNG");
-        btnDong.setFont(new Font("Roboto", Font.BOLD, 14));
-        btnDong.setPreferredSize(new Dimension(140, 40));
-        btnDong.setBackground(new Color(0, 0, 205));
+        centerPanel.add(totalPanel, BorderLayout.SOUTH);
+
+        add(centerPanel, BorderLayout.CENTER);
+
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 16));
+        footer.setBackground(FOOTER_BG);
+        footer.setPreferredSize(new Dimension(980, 72));
+        JButton btnDong = new JButton("ĐÓNG");
+        btnDong.setIcon(null);
+        btnDong.setFont(new Font("Roboto", Font.BOLD, 13));
+        btnDong.setPreferredSize(new Dimension(120, 38));
+        btnDong.setBackground(PRIMARY);
         btnDong.setForeground(Color.WHITE);
         btnDong.setFocusPainted(false);
         btnDong.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnDong.setBorder(new LineBorder(new Color(0, 0, 205), 2, true));
+        btnDong.setBorder(new LineBorder(PRIMARY, 2, true));
         btnDong.addActionListener(e -> dispose());
-        
-        buttonPanel.add(btnDong);
-        
-        add(buttonPanel, BorderLayout.PAGE_END);
+        footer.add(btnDong);
+        add(footer, BorderLayout.SOUTH);
+
+        loadData();
+        setLocationRelativeTo(parent);
     }
-    
+
+    private JPanel createInfoPanel() {
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setBackground(Color.WHITE);
+        wrapper.setBorder(new EmptyBorder(22, 24, 18, 24));
+        wrapper.setPreferredSize(new Dimension(980, 128));
+
+        JPanel info = new JPanel(new GridBagLayout());
+        info.setBackground(Color.WHITE);
+
+        try {
+            NhanVien nv = phieuNhap.getNhanVien() == null ? null
+                    : nvDAO.getNhanVienTheoMa(phieuNhap.getNhanVien().getMaNV());
+            NhaCungCap ncc = phieuNhap.getNhaCungCap() == null ? null
+                    : nccDAO.getNhaCungCapTheoMa(phieuNhap.getNhaCungCap().getMaNCC());
+
+            addInfo(info, 0, 0, "Mã phiếu:", phieuNhap.getMaPhieuNhap(), true);
+            addInfo(info, 0, 1, "Nhân viên:", nv == null ? "" : nv.getTenNV(), false);
+            addInfo(info, 0, 2, "Ngày nhập:", phieuNhap.getNgayNhap() == null ? "" : sdf.format(phieuNhap.getNgayNhap()), false);
+            addInfo(info, 1, 0, "Nhà cung cấp:", ncc == null ? "" : ncc.getTenNCC(), false);
+            addInfo(info, 1, 1, "Mã NV:", phieuNhap.getNhanVien() == null ? "" : phieuNhap.getNhanVien().getMaNV(), true);
+            addInfo(info, 1, 2, "Mã NCC:", phieuNhap.getNhaCungCap() == null ? "" : phieuNhap.getNhaCungCap().getMaNCC(), true);
+        } catch (Exception e) {
+            addInfo(info, 0, 0, "Mã phiếu:", phieuNhap.getMaPhieuNhap(), true);
+        }
+
+        wrapper.add(info, BorderLayout.CENTER);
+        return wrapper;
+    }
+
+    private void addInfo(JPanel panel, int row, int col, String label, String value, boolean blueValue) {
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(8, col == 0 ? 0 : 28, 8, 8);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        gbc.gridx = col * 2;
+        gbc.gridy = row;
+        gbc.weightx = 0.10;
+        JLabel lbl = new JLabel(label);
+        lbl.setFont(new Font("Roboto", Font.BOLD, 12));
+        panel.add(lbl, gbc);
+
+        gbc.gridx = col * 2 + 1;
+        gbc.weightx = 0.23;
+        JLabel val = new JLabel(value == null ? "" : value);
+        val.setFont(new Font("Roboto", Font.PLAIN, 12));
+        if (blueValue) {
+            val.setForeground(new Color(0, 102, 204));
+        }
+        panel.add(val, gbc);
+    }
+
     private void loadData() {
         try {
-            ArrayList<ChiTietNhapThuoc> chiTiets = pnhDAO.getChiTietPhieuNhap(phieuNhap.getMaPhieuNhap());
-            
-            double tongTien = 0;
+            ArrayList<ChiTietNhapThuoc> list = pnhDAO.getChiTietPhieuNhap(phieuNhap.getMaPhieuNhap());
             int stt = 1;
-            
-            for (ChiTietNhapThuoc ct : chiTiets) {
-                // Lấy thông tin thuốc
+            double tongTien = 0;
+            for (ChiTietNhapThuoc ct : list) {
                 Thuoc thuoc = thuocDAO.getThuocTheoMaThuoc(ct.getMaThuoc());
-                String tenThuoc = thuoc != null ? thuoc.getTenThuoc() : "N/A";
-                
-                double thanhTien = ct.getSoLuong() * ct.getDonGia();
+                double thanhTien = ct.getThanhTien();
                 tongTien += thanhTien;
-                
-                tableModel.addRow(new Object[]{
-                    stt,
-                    ct.getMaThuoc(),
-                    tenThuoc,
-                    ct.getSoLuong(),
-                    String.format("%.2f", ct.getDonGia()),
-                    String.format("%.2f", thanhTien)
-                });
-                
-                stt++;
+                model.addRow(new Object[] { stt++, ct.getMaLo(), ct.getSoLo(), ct.getMaThuoc(),
+                        thuoc == null ? "" : thuoc.getTenThuoc(),
+                        ct.getNgaySanXuat() == null ? "" : sdf.format(ct.getNgaySanXuat()),
+                        ct.getHanSuDung() == null ? "" : sdf.format(ct.getHanSuDung()),
+                        ct.getSoLuong(), String.format("%,.0f", ct.getDonGia()),
+                        String.format("%,.0f", thanhTien) });
             }
-            
-            // Cập nhật tổng tiền
-            lblTongTien.setText(String.format("%.2f VNĐ", tongTien));
-            
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-            JOptionPane.showMessageDialog(this, 
-                "Lỗi khi tải dữ liệu: " + ex.getMessage(), 
-                "Lỗi", 
-                JOptionPane.ERROR_MESSAGE);
+            lblTongTien.setText(String.format("%,.0f VNĐ  ", tongTien));
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+    }
+
+    private void centerTableCells(JTable table) {
+        DefaultTableCellRenderer center = new DefaultTableCellRenderer();
+        center.setHorizontalAlignment(JLabel.CENTER);
+        for (int i = 0; i < table.getColumnCount(); i++) {
+            table.getColumnModel().getColumn(i).setCellRenderer(center);
+        }
+        table.getColumnModel().getColumn(0).setPreferredWidth(40);
+        table.getColumnModel().getColumn(4).setPreferredWidth(190);
     }
 }

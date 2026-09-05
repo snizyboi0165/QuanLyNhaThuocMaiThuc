@@ -6,7 +6,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import ConnectDB.DatabaseConnection;
+
+import connectdb.DatabaseConnection;
 import entity.NhanVien;
 import entity.TaiKhoan;
 

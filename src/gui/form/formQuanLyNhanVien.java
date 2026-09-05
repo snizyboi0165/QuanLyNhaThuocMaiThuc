@@ -1,4 +1,4 @@
-﻿package gui.form;
+package gui.form;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -25,6 +25,8 @@ import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.border.LineBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
@@ -37,7 +39,7 @@ import gui.dialog.DialogCapNhatNhanVien;
 import gui.dialog.DialogThemNhanVien;
 import gui.dialog.DialogThongTinNhanVien;
 
-public class formQuanLyNhanVien extends JPanel implements ActionListener {
+public class FormQuanLyNhanVien extends JPanel implements ActionListener {
     private JPanel actionPanel;
     private JButton btnAdd;
     private JButton btnDelete;
@@ -56,8 +58,9 @@ public class formQuanLyNhanVien extends JPanel implements ActionListener {
     private JTextField txtSearch;
     private DefaultTableModel tableModel;
     private NhanVienDAO nvdao;
+    private ArrayList<NhanVien> dsNhanVien = new ArrayList<>();
     Font headerTable = new Font("Roboto", Font.BOLD, 18);
-    public formQuanLyNhanVien() {
+    public FormQuanLyNhanVien() {
     	taoNoiDung();
     	addActionListeners();
     }
@@ -103,7 +106,7 @@ public class formQuanLyNhanVien extends JPanel implements ActionListener {
 
         cboxSearch.setToolTipText("");
         cboxSearch.setPreferredSize(new Dimension(120, 40));
-        String[] searchType = {"Tất cả", "Mã", "Tên", "Số điện thoại", "Năm sinh"};
+        String[] searchType = {"Tất cả", "Mã", "Tên", "Số điện thoại"};
         DefaultComboBoxModel<String> model = new DefaultComboBoxModel<>(searchType);
         cboxSearch.setModel(model);
         jPanel3.add(cboxSearch);
@@ -175,7 +178,7 @@ public class formQuanLyNhanVien extends JPanel implements ActionListener {
 
         btnInfo.setFont(new Font("Roboto", Font.BOLD, 14));
         btnInfo.setIcon(new FlatSVGIcon(getClass().getResource("/img/info.svg")));
-        btnInfo.setText("INFO");
+        btnInfo.setText("CHI TIẾT");
         btnInfo.setBorder(null);
         btnInfo.setBorderPainted(false);
         btnInfo.setContentAreaFilled(false); 
@@ -194,7 +197,12 @@ public class formQuanLyNhanVien extends JPanel implements ActionListener {
         tablePanel.setLayout(new BorderLayout());
         
         String[] tableTitle = {"Mã nhân viên", "Họ tên", "Chức vụ", "Số điện thoại", "Ngày sinh", "Giới tính", "Địa chỉ", "Email"};
-        tableModel = new DefaultTableModel(tableTitle, 0);
+        tableModel = new DefaultTableModel(tableTitle, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
         table.getTableHeader().setFont(headerTable);
         table.setModel(tableModel);
 
@@ -232,15 +240,15 @@ public class formQuanLyNhanVien extends JPanel implements ActionListener {
         add(tablePanel, BorderLayout.CENTER);
     }
     private void loadDataTable() {
-    	ArrayList<NhanVien> dsNV = null;
+        tableModel.setRowCount(0);
     	try {
-			dsNV = nvdao.getDSNhanVien();
+			dsNhanVien = nvdao.getDSNhanVien();
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-    	for (NhanVien nv : dsNV) {
-    		tableModel.addRow(new Object[] {nv.getMaNV(),nv.getTenNV(),nv.getChucVu(),nv.getSoDienThoai(),new SimpleDateFormat("dd/MM/yyyy").format(nv.getNgaySinh()),nv.getGioiTinh(),nv.getDiaChi(),nv.getEmail()});
+    	for (NhanVien nv : dsNhanVien) {
+    		themDongNhanVien(nv);
     	}
     }
  
@@ -272,7 +280,84 @@ public class formQuanLyNhanVien extends JPanel implements ActionListener {
 	    btnDelete.addActionListener(this);
 	    btnInfo.addActionListener(this);
 	    btnReload.addActionListener(this);
+        txtSearch.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                timKiem();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                timKiem();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                timKiem();
+            }
+        });
+        cboxSearch.addActionListener(e -> timKiem());
 	}
+
+    private void timKiem() {
+        String keyword = txtSearch.getText().trim().toLowerCase();
+        String searchType = cboxSearch.getSelectedItem().toString();
+
+        if (keyword.isEmpty()) {
+            reloadTable();
+            return;
+        }
+
+        tableModel.setRowCount(0);
+        for (NhanVien nv : dsNhanVien) {
+            String maNV = safeLower(nv.getMaNV());
+            String tenNV = safeLower(nv.getTenNV());
+            String sdt = safeLower(nv.getSoDienThoai());
+            boolean match = false;
+
+            switch (searchType) {
+                case "Mã":
+                    match = maNV.contains(keyword);
+                    break;
+                case "Tên":
+                    match = tenNV.contains(keyword);
+                    break;
+                case "Số điện thoại":
+                    match = sdt.contains(keyword);
+                    break;
+                default:
+                    match = maNV.contains(keyword)
+                            || tenNV.contains(keyword)
+                            || safeLower(nv.getChucVu()).contains(keyword)
+                            || sdt.contains(keyword)
+                            || safeLower(nv.getGioiTinh()).contains(keyword)
+                            || safeLower(nv.getDiaChi()).contains(keyword)
+                            || safeLower(nv.getEmail()).contains(keyword);
+                    break;
+            }
+
+            if (match) {
+                themDongNhanVien(nv);
+            }
+        }
+    }
+
+    private void themDongNhanVien(NhanVien nv) {
+        tableModel.addRow(new Object[] {
+                nv.getMaNV(),
+                nv.getTenNV(),
+                nv.getChucVu(),
+                nv.getSoDienThoai(),
+                new SimpleDateFormat("dd/MM/yyyy").format(nv.getNgaySinh()),
+                nv.getGioiTinh(),
+                nv.getDiaChi(),
+                nv.getEmail()
+        });
+    }
+
+    private String safeLower(String value) {
+        return value == null ? "" : value.toLowerCase();
+    }
 	
 	private void themNhanVien() {
 	    DialogThemNhanVien dialog = new DialogThemNhanVien(

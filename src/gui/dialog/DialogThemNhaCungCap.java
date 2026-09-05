@@ -1,9 +1,8 @@
-﻿package gui.dialog;
+package gui.dialog;
 
 import java.awt.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.border.LineBorder;
 import dao.NhaCungCapDAO;
 import entity.NhaCungCap;
 import gui.form.FormQuanLyNhaCungCap;
@@ -13,7 +12,6 @@ import java.sql.SQLException;
 public class DialogThemNhaCungCap extends JDialog {
     private JTextField txtTenNCC;
     private JTextField txtSoDienThoai;
-    private JTextField txtCongNo;
     private JButton btnXacNhan;
     private JButton btnHuy;
     
@@ -68,15 +66,8 @@ public class DialogThemNhaCungCap extends JDialog {
         txtSoDienThoai = new JTextField(20);
         formPanel.add(txtSoDienThoai, gbc);
         
-        // Công nợ
-        gbc.gridx = 0; gbc.gridy = 2;
-        formPanel.add(new JLabel("Công nợ:"), gbc);
-        gbc.gridx = 1;
-        txtCongNo = new JTextField("0", 20);
-        formPanel.add(txtCongNo, gbc);
-        
         // Ghi chú
-        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2;
+        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 2;
         JLabel lblNote = new JLabel("* Mã NCC sẽ được tự động phát sinh");
         lblNote.setFont(new Font("Roboto", Font.ITALIC, 12));
         formPanel.add(lblNote, gbc);
@@ -89,8 +80,13 @@ public class DialogThemNhaCungCap extends JDialog {
         btnXacNhan = new JButton("XÁC NHẬN");
         btnHuy = new JButton("HỦY");
         btnXacNhan.setPreferredSize(new Dimension(140, 40));
+        btnXacNhan.setFont(new Font("Roboto", Font.BOLD, 14));
         btnXacNhan.setBackground(new Color(0, 0, 205));
+        btnXacNhan.setForeground(Color.WHITE);
+        btnXacNhan.setFocusPainted(false);
         btnHuy.setPreferredSize(new Dimension(140, 40));
+        btnHuy.setFont(new Font("Roboto", Font.BOLD, 14));
+        btnHuy.setFocusPainted(false);
         buttonPanel.add(btnXacNhan);
         buttonPanel.add(btnHuy);
         add(buttonPanel, BorderLayout.SOUTH);
@@ -103,24 +99,15 @@ public class DialogThemNhaCungCap extends JDialog {
     private void xuLyThemNCC() {
         String ten = txtTenNCC.getText().trim();
         String sdt = txtSoDienThoai.getText().trim();
-        String congNoStr = txtCongNo.getText().trim();
         
         if (ten.isEmpty() || sdt.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Tên và số điện thoại không được để trống!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        double congNo = 0;
-        try {
-            congNo = Double.parseDouble(congNoStr);
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Công nợ phải là một con số!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
         try {
             String maNCC = nccDAO.generateMaNCC();
-            NhaCungCap ncc = new NhaCungCap(maNCC, ten, sdt, congNo);
+            NhaCungCap ncc = new NhaCungCap(maNCC, ten, sdt);
             
             if (nccDAO.themNhaCungCap(ncc)) {
                 JOptionPane.showMessageDialog(this, "Thêm nhà cung cấp thành công!\nMã NCC: " + maNCC, "Thành công", JOptionPane.INFORMATION_MESSAGE);

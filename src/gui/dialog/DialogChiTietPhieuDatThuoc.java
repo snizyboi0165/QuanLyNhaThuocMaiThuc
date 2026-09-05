@@ -1,4 +1,4 @@
-﻿package gui.dialog;
+package gui.dialog;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -89,7 +89,7 @@ public class DialogChiTietPhieuDatThuoc extends JDialog {
         JLabel lblTitle = new JLabel("CHI TIẾT PHIẾU ĐẶT THUỐC");
         lblTitle.setFont(new Font("Roboto", Font.BOLD, 28));
         lblTitle.setForeground(Color.WHITE);
-        lblTitle.setIcon(new FlatSVGIcon("./img/info.svg", 32, 32));
+        lblTitle.setIcon(new FlatSVGIcon(getClass().getResource("/img/info.svg")).derive(32, 32));
         headerPanel.add(lblTitle);
         
         // Info Panel
@@ -285,7 +285,19 @@ public class DialogChiTietPhieuDatThuoc extends JDialog {
             // Hiển thị thông tin phiếu đặt thuốc
             lblMaPhieuDat.setText(phieuDatThuoc.getMaPhieuDat());
             lblNgayDat.setText(dateFormat.format(phieuDatThuoc.getNgayDat()));
-            lblNhanVien.setText("N/A");  // PhieuDatThuoc không lưu thông tin nhân viên
+            String tenNhanVien = null;
+            if (phieuDatThuoc.getNhanVien() != null
+                    && phieuDatThuoc.getNhanVien().getMaNV() != null
+                    && !phieuDatThuoc.getNhanVien().getMaNV().trim().isEmpty()) {
+                NhanVien nv = nhanVienDAO.getNhanVienTheoMa(phieuDatThuoc.getNhanVien().getMaNV());
+                tenNhanVien = nv != null ? nv.getTenNV() : null;
+            }
+            if (tenNhanVien == null || tenNhanVien.trim().isEmpty()) {
+                tenNhanVien = pdtDAO.getTenNhanVienThanhToanTheoPhieuDat(maPhieuDat);
+            }
+            lblNhanVien.setText(tenNhanVien != null && !tenNhanVien.trim().isEmpty()
+                    ? tenNhanVien.trim()
+                    : "N/A");
             
             // Lấy thông tin khách hàng
             if (phieuDatThuoc.getKhachHang() != null && phieuDatThuoc.getKhachHang().getMaKH() != null) {
@@ -325,8 +337,35 @@ public class DialogChiTietPhieuDatThuoc extends JDialog {
             }
             // Hiển thị tạm tính
             lblTongTien.setText(String.format("%,.0f VNĐ", tamTinh));
-            // Tính tổng cộng
-            double tongCong = tamTinh;
+
+            double tienGiamGia = 0;
+            if (phieuDatThuoc.getKhuyenMai() != null
+                    && phieuDatThuoc.getKhuyenMai().getMaKM() != null
+                    && !phieuDatThuoc.getKhuyenMai().getMaKM().trim().isEmpty()) {
+                KhuyenMai km = khuyenMaiDAO.getKhuyenMaiTheoMa(phieuDatThuoc.getKhuyenMai().getMaKM());
+                if (km != null) {
+                    tienGiamGia = tamTinh * km.getPhanTramGiamGia() / 100;
+                    lblKhuyenMai.setText(String.format("%.0f%% (-%,.0f VNĐ)", km.getPhanTramGiamGia(), tienGiamGia));
+                }
+            } else {
+                lblKhuyenMai.setText("0 VNĐ");
+            }
+
+            double tienSauGiam = tamTinh - tienGiamGia;
+            double tienThue = 0;
+            if (phieuDatThuoc.getThue() != null
+                    && phieuDatThuoc.getThue().getMaThue() != null
+                    && !phieuDatThuoc.getThue().getMaThue().trim().isEmpty()) {
+                Thue thue = thueDAO.getThueTheoMa(phieuDatThuoc.getThue().getMaThue());
+                if (thue != null) {
+                    tienThue = tienSauGiam * thue.getPhanTramThue() / 100;
+                    lblThue.setText(String.format("%.0f%% (+%,.0f VNĐ)", thue.getPhanTramThue(), tienThue));
+                }
+            } else {
+                lblThue.setText("0 VNĐ");
+            }
+
+            double tongCong = tienSauGiam + tienThue;
             lblThanhToan.setText(String.format("%,.0f VNĐ", tongCong));
             
         } catch (SQLException e) {

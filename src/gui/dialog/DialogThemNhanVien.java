@@ -1,4 +1,4 @@
-﻿package gui.dialog;
+package gui.dialog;
 
 import java.awt.*;
 import java.util.Calendar;
@@ -10,7 +10,7 @@ import com.toedter.calendar.JDateChooser;
 
 import dao.NhanVienDAO;
 import entity.NhanVien;
-import gui.form.formQuanLyNhanVien;
+import gui.form.FormQuanLyNhanVien;
 
 public class DialogThemNhanVien extends JDialog {
     private JTextField txtTenNV;
@@ -25,9 +25,9 @@ public class DialogThemNhanVien extends JDialog {
     private JButton btnHuy;
     
     private NhanVienDAO nvDAO;
-    private formQuanLyNhanVien parentForm;
+    private FormQuanLyNhanVien parentForm;
     
-    public DialogThemNhanVien(Frame parent, formQuanLyNhanVien form) {
+    public DialogThemNhanVien(Frame parent, FormQuanLyNhanVien form) {
         super(parent, "Thêm nhân viên mới", true);
         this.parentForm = form;
         this.nvDAO = new NhanVienDAO();

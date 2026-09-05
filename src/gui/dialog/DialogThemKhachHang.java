@@ -1,4 +1,4 @@
-﻿package gui.dialog;
+package gui.dialog;
 
 import java.awt.*;
 import javax.swing.*;
@@ -19,13 +19,20 @@ public class DialogThemKhachHang extends JDialog {
     
     private KhachHangDAO khDAO;
     private FormQuanLyKhachHang parentForm;
+    private String soDienThoaiMacDinh;
     
     public DialogThemKhachHang(Frame parent, FormQuanLyKhachHang form) {
+        this(parent, form, "");
+    }
+
+    public DialogThemKhachHang(Frame parent, FormQuanLyKhachHang form, String soDienThoaiMacDinh) {
         super(parent, "Thêm khách hàng mới", true);
         this.parentForm = form;
         this.khDAO = new KhachHangDAO();
+        this.soDienThoaiMacDinh = soDienThoaiMacDinh == null ? "" : soDienThoaiMacDinh.trim();
         
         initComponents();
+        ganSoDienThoaiMacDinh();
         setLocationRelativeTo(parent);
     }
     
@@ -164,6 +171,13 @@ public class DialogThemKhachHang extends JDialog {
         
         add(buttonPanel, BorderLayout.SOUTH);
     }
+
+    private void ganSoDienThoaiMacDinh() {
+        if (!soDienThoaiMacDinh.isEmpty()) {
+            txtSoDienThoai.setText(soDienThoaiMacDinh);
+            txtHoTen.requestFocusInWindow();
+        }
+    }
     
     private void xuLyThemKhachHang() {
         if (!validateInput()) {
@@ -176,13 +190,40 @@ public class DialogThemKhachHang extends JDialog {
             String soDienThoai = txtSoDienThoai.getText().trim();
             String email = txtEmail.getText().trim();
             
-            // Kiểm tra số điện thoại đã tồn tại chưa
-            if (khDAO.kiemTraSDTTonTai(soDienThoai)) {
-                JOptionPane.showMessageDialog(this, 
-                    "Số điện thoại này đã được đăng ký cho khách hàng khác!", 
-                    "Lỗi", 
-                    JOptionPane.ERROR_MESSAGE);
-                txtSoDienThoai.requestFocus();
+            KhachHang khDaTonTai = khDAO.getKhachHangTheoSDTBaoGomDaAn(soDienThoai);
+            if (khDaTonTai != null) {
+                if (khDAO.khachHangDangHoatDong(khDaTonTai.getMaKH())) {
+                    JOptionPane.showMessageDialog(this, 
+                        "Số điện thoại này đã được đăng ký cho khách hàng khác!", 
+                        "Lỗi", 
+                        JOptionPane.ERROR_MESSAGE);
+                    txtSoDienThoai.requestFocus();
+                    return;
+                }
+
+                int confirm = JOptionPane.showConfirmDialog(this,
+                    "Khách hàng đã từng tồn tại, bạn có muốn khôi phục khách hàng này?",
+                    "Khôi phục khách hàng",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE);
+
+                if (confirm == JOptionPane.YES_OPTION) {
+                    KhachHang khKhoiPhuc = new KhachHang(khDaTonTai.getMaKH(), hoTen, soDienThoai, email);
+                    boolean restored = khDAO.khoiPhucKhachHang(khKhoiPhuc);
+                    if (restored) {
+                        JOptionPane.showMessageDialog(this, 
+                            "Khôi phục khách hàng thành công!\nMã khách hàng: " + khDaTonTai.getMaKH(), 
+                            "Thành công", 
+                            JOptionPane.INFORMATION_MESSAGE);
+                        parentForm.reloadTable();
+                        dispose();
+                    } else {
+                        JOptionPane.showMessageDialog(this, 
+                            "Khôi phục khách hàng thất bại!", 
+                            "Lỗi", 
+                            JOptionPane.ERROR_MESSAGE);
+                    }
+                }
                 return;
             }
             
@@ -220,6 +261,15 @@ public class DialogThemKhachHang extends JDialog {
             JOptionPane.showMessageDialog(this, 
                 "Vui lòng nhập họ và tên khách hàng!", 
                 "Cảnh báo", 
+                JOptionPane.WARNING_MESSAGE);
+            txtHoTen.requestFocus();
+            return false;
+        }
+
+        if (!laTenKhachHangHopLe(txtHoTen.getText().trim())) {
+            JOptionPane.showMessageDialog(this,
+                "Họ và tên chỉ được chứa chữ cái và khoảng trắng.",
+                "Cảnh báo",
                 JOptionPane.WARNING_MESSAGE);
             txtHoTen.requestFocus();
             return false;
@@ -266,5 +316,9 @@ public class DialogThemKhachHang extends JDialog {
         }
         
         return true;
+    }
+
+    private boolean laTenKhachHangHopLe(String tenKhachHang) {
+        return tenKhachHang != null && tenKhachHang.trim().matches("[\\p{L}\\s]+");
     }
 }

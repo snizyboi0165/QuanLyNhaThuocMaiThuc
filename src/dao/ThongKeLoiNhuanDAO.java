@@ -7,9 +7,13 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 
-import ConnectDB.DatabaseConnection;
+import connectdb.DatabaseConnection;
 
 public class ThongKeLoiNhuanDAO {
+    private static final String DOANH_THU =
+            "(cthd.soLuong * cthd.donGia "
+            + "* (1 - ISNULL(km.phanTramGiamGia, 0) / 100.0) "
+            + "* (1 + ISNULL(thue.phanTramThue, 0) / 100.0))";
     
     /**
      * Class để lưu thông tin thống kê sản phẩm
@@ -152,10 +156,12 @@ public class ThongKeLoiNhuanDAO {
                     "t.maThuoc, " +
                     "t.tenThuoc, " +
                     "SUM(cthd.soLuong) as soLuongBan, " +
-                    "SUM(cthd.soLuong * cthd.donGia) as doanhThu " +
+                    "SUM(" + DOANH_THU + ") as doanhThu " +
                     "FROM ChiTietHoaDon cthd " +
                     "INNER JOIN HoaDon hd ON cthd.maHD = hd.maHD " +
                     "INNER JOIN Thuoc t ON cthd.maThuoc = t.maThuoc " +
+                    "LEFT JOIN KhuyenMai km ON hd.maKM = km.maKM " +
+                    "LEFT JOIN Thue thue ON hd.maThue = thue.maThue " +
                     "WHERE CAST(hd.ngayLap AS DATE) BETWEEN ? AND ? " +
                     "GROUP BY t.maThuoc, t.tenThuoc " +
                     "ORDER BY doanhThu DESC";
@@ -187,6 +193,54 @@ public class ThongKeLoiNhuanDAO {
         
         return ketQua;
     }
+
+    /**
+     * Sản phẩm bán chậm
+     */
+    public ArrayList<TopSanPham> thongKeSanPhamBanCham(LocalDate tuNgay, LocalDate denNgay, int topN) throws SQLException {
+        ArrayList<TopSanPham> ketQua = new ArrayList<>();
+        
+        String sql = "SELECT TOP " + topN + " " +
+                    "t.maThuoc, " +
+                    "t.tenThuoc, " +
+                    "SUM(cthd.soLuong) as soLuongBan, " +
+                    "SUM(" + DOANH_THU + ") as doanhThu " +
+                    "FROM ChiTietHoaDon cthd " +
+                    "INNER JOIN HoaDon hd ON cthd.maHD = hd.maHD " +
+                    "INNER JOIN Thuoc t ON cthd.maThuoc = t.maThuoc " +
+                    "LEFT JOIN KhuyenMai km ON hd.maKM = km.maKM " +
+                    "LEFT JOIN Thue thue ON hd.maThue = thue.maThue " +
+                    "WHERE CAST(hd.ngayLap AS DATE) BETWEEN ? AND ? " +
+                    "GROUP BY t.maThuoc, t.tenThuoc " +
+                    "ORDER BY soLuongBan ASC, doanhThu ASC";
+        
+        Connection con = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        
+        try {
+            con = getSafeConnection();
+            stmt = con.prepareStatement(sql);
+            stmt.setDate(1, java.sql.Date.valueOf(tuNgay));
+            stmt.setDate(2, java.sql.Date.valueOf(denNgay));
+            rs = stmt.executeQuery();
+            
+            while (rs.next()) {
+                String maThuoc = rs.getString("maThuoc");
+                String tenThuoc = rs.getString("tenThuoc");
+                int soLuongBan = rs.getInt("soLuongBan");
+                double doanhThu = rs.getDouble("doanhThu");
+                
+                TopSanPham sp = new TopSanPham(maThuoc, tenThuoc, soLuongBan, doanhThu);
+                ketQua.add(sp);
+            }
+        } finally {
+            if (rs != null) try { rs.close(); } catch (SQLException e) { }
+            if (stmt != null) try { stmt.close(); } catch (SQLException e) { }
+        }
+        
+        return ketQua;
+    }
     
     /**
      * Thống kê theo khách hàng
@@ -195,15 +249,17 @@ public class ThongKeLoiNhuanDAO {
         ArrayList<ThongKeKhachHang> ketQua = new ArrayList<>();
         
         String sql = "SELECT " +
-                    "kh.maKH, " +
-                    "kh.hoTen, " +
+                    "COALESCE(kh.maKH, 'KHACHLE') as maKH, " +
+                    "COALESCE(kh.hoTen, N'Khách lẻ') as hoTen, " +
                     "COUNT(DISTINCT hd.maHD) as soHoaDon, " +
-                    "SUM(cthd.soLuong * cthd.donGia) as tongTienMua " +
+                    "SUM(" + DOANH_THU + ") as tongTienMua " +
                     "FROM HoaDon hd " +
-                    "INNER JOIN KhachHang kh ON hd.maKH = kh.maKH " +
+                    "LEFT JOIN KhachHang kh ON hd.maKH = kh.maKH " +
                     "INNER JOIN ChiTietHoaDon cthd ON hd.maHD = cthd.maHD " +
+                    "LEFT JOIN KhuyenMai km ON hd.maKM = km.maKM " +
+                    "LEFT JOIN Thue thue ON hd.maThue = thue.maThue " +
                     "WHERE CAST(hd.ngayLap AS DATE) BETWEEN ? AND ? " +
-                    "GROUP BY kh.maKH, kh.hoTen " +
+                    "GROUP BY COALESCE(kh.maKH, 'KHACHLE'), COALESCE(kh.hoTen, N'Khách lẻ') " +
                     "ORDER BY tongTienMua DESC";
         
         Connection con = null;
@@ -244,10 +300,12 @@ public class ThongKeLoiNhuanDAO {
                     "nv.maNV, " +
                     "nv.hoTen, " +
                     "COUNT(DISTINCT hd.maHD) as soHoaDonBan, " +
-                    "SUM(cthd.soLuong * cthd.donGia) as doanhThu " +
+                    "SUM(" + DOANH_THU + ") as doanhThu " +
                     "FROM HoaDon hd " +
                     "INNER JOIN NhanVien nv ON hd.maNV = nv.maNV " +
                     "INNER JOIN ChiTietHoaDon cthd ON hd.maHD = cthd.maHD " +
+                    "LEFT JOIN KhuyenMai km ON hd.maKM = km.maKM " +
+                    "LEFT JOIN Thue thue ON hd.maThue = thue.maThue " +
                     "WHERE CAST(hd.ngayLap AS DATE) BETWEEN ? AND ? " +
                     "GROUP BY nv.maNV, nv.hoTen " +
                     "ORDER BY doanhThu DESC";
@@ -290,13 +348,15 @@ public class ThongKeLoiNhuanDAO {
                     "t.maThuoc, " +
                     "t.tenThuoc, " +
                     "SUM(cthd.soLuong) as soLuongBan, " +
-                    "SUM(cthd.soLuong * cthd.donGia) as doanhThu " +
+                    "SUM(" + DOANH_THU + ") as doanhThu " +
                     "FROM ChiTietHoaDon cthd " +
                     "INNER JOIN HoaDon hd ON cthd.maHD = hd.maHD " +
                     "INNER JOIN Thuoc t ON cthd.maThuoc = t.maThuoc " +
+                    "LEFT JOIN KhuyenMai km ON hd.maKM = km.maKM " +
+                    "LEFT JOIN Thue thue ON hd.maThue = thue.maThue " +
                     "WHERE CAST(hd.ngayLap AS DATE) BETWEEN ? AND ? " +
                     "GROUP BY t.maThuoc, t.tenThuoc " +
-                    "ORDER BY doanhThu DESC";
+                    "ORDER BY soLuongBan DESC, doanhThu DESC";
         
         Connection con = null;
         PreparedStatement stmt = null;
@@ -334,9 +394,11 @@ public class ThongKeLoiNhuanDAO {
         
         String sql = "SELECT " +
                     "CONVERT(VARCHAR(10), CAST(hd.ngayLap AS DATE), 103) as ngay, " +
-                    "SUM(cthd.soLuong * cthd.donGia) as doanhThu " +
+                    "SUM(" + DOANH_THU + ") as doanhThu " +
                     "FROM HoaDon hd " +
                     "INNER JOIN ChiTietHoaDon cthd ON hd.maHD = cthd.maHD " +
+                    "LEFT JOIN KhuyenMai km ON hd.maKM = km.maKM " +
+                    "LEFT JOIN Thue thue ON hd.maThue = thue.maThue " +
                     "WHERE CAST(hd.ngayLap AS DATE) BETWEEN ? AND ? " +
                     "GROUP BY CAST(hd.ngayLap AS DATE) " +
                     "ORDER BY CAST(hd.ngayLap AS DATE) ASC";
@@ -376,9 +438,11 @@ public class ThongKeLoiNhuanDAO {
         String sql = "SELECT " +
                     "MONTH(hd.ngayLap) as thang, " +
                     "YEAR(hd.ngayLap) as nam, " +
-                    "SUM(cthd.soLuong * cthd.donGia) as doanhThu " +
+                    "SUM(" + DOANH_THU + ") as doanhThu " +
                     "FROM HoaDon hd " +
                     "INNER JOIN ChiTietHoaDon cthd ON hd.maHD = cthd.maHD " +
+                    "LEFT JOIN KhuyenMai km ON hd.maKM = km.maKM " +
+                    "LEFT JOIN Thue thue ON hd.maThue = thue.maThue " +
                     "WHERE CAST(hd.ngayLap AS DATE) BETWEEN ? AND ? " +
                     "GROUP BY YEAR(hd.ngayLap), MONTH(hd.ngayLap) " +
                     "ORDER BY YEAR(hd.ngayLap) ASC, MONTH(hd.ngayLap) ASC";
@@ -419,9 +483,11 @@ public class ThongKeLoiNhuanDAO {
         
         String sql = "SELECT " +
                     "YEAR(hd.ngayLap) as nam, " +
-                    "SUM(cthd.soLuong * cthd.donGia) as doanhThu " +
+                    "SUM(" + DOANH_THU + ") as doanhThu " +
                     "FROM HoaDon hd " +
                     "INNER JOIN ChiTietHoaDon cthd ON hd.maHD = cthd.maHD " +
+                    "LEFT JOIN KhuyenMai km ON hd.maKM = km.maKM " +
+                    "LEFT JOIN Thue thue ON hd.maThue = thue.maThue " +
                     "WHERE CAST(hd.ngayLap AS DATE) BETWEEN ? AND ? " +
                     "GROUP BY YEAR(hd.ngayLap) " +
                     "ORDER BY YEAR(hd.ngayLap) ASC";

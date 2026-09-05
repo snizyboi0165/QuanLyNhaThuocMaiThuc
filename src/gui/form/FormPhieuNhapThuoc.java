@@ -1,4 +1,4 @@
-﻿package gui.form;
+package gui.form;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -10,6 +10,8 @@ import java.awt.Frame;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
@@ -30,6 +32,7 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
 
 import dao.PhieuNhapThuocDAO;
 import entity.PhieuNhapThuoc;
+import entity.TaiKhoan;
 import gui.dialog.DialogThemPhieuNhap;
 import gui.dialog.DialogCapNhatPhieuNhap;
 import gui.dialog.DialogThongTinPhieuNhap;
@@ -53,10 +56,16 @@ public class FormPhieuNhapThuoc extends JPanel {
     private JTextField txtSearch;
     private DefaultTableModel tableModel;
     private PhieuNhapThuocDAO pnhDAO;
+    private boolean choPhepSuaXoa = true;
     
     Font headerTable = new Font("Roboto", Font.BOLD, 18);
     
     public FormPhieuNhapThuoc() {
+        this(null);
+    }
+
+    public FormPhieuNhapThuoc(TaiKhoan taiKhoan) {
+        choPhepSuaXoa = coQuyenQuanLy(taiKhoan);
         this.pnhDAO = new PhieuNhapThuocDAO();
         taoNoiDung();
         setupEventHandlers();
@@ -155,7 +164,9 @@ public class FormPhieuNhapThuoc extends JPanel {
         btnUpdate.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnUpdate.setPreferredSize(new Dimension(90, 90));
         btnUpdate.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        actionPanel.add(btnUpdate);
+        if (choPhepSuaXoa) {
+            actionPanel.add(btnUpdate);
+        }
 
         btnDelete.setFont(new Font("Roboto", Font.BOLD, 14));
         btnDelete.setIcon(new FlatSVGIcon(getClass().getResource("/img/delete.svg")));
@@ -168,11 +179,13 @@ public class FormPhieuNhapThuoc extends JPanel {
         btnDelete.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnDelete.setPreferredSize(new Dimension(90, 90));
         btnDelete.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        actionPanel.add(btnDelete);
+        if (choPhepSuaXoa) {
+            actionPanel.add(btnDelete);
+        }
 
         btnInfo.setFont(new Font("Roboto", Font.BOLD, 14));
         btnInfo.setIcon(new FlatSVGIcon(getClass().getResource("/img/info.svg")));
-        btnInfo.setText("INFO");
+        btnInfo.setText("CHI TIẾT");
         btnInfo.setBorder(null);
         btnInfo.setBorderPainted(false);
         btnInfo.setContentAreaFilled(false);
@@ -287,6 +300,10 @@ public class FormPhieuNhapThuoc extends JPanel {
      * Xử lý cập nhật phiếu nhập thuốc
      */
     private void xuLyCapNhatPhieuNhap() {
+        if (!choPhepSuaXoa) {
+            thongBaoKhongCoQuyen();
+            return;
+        }
         int selectedRow = table.getSelectedRow();
         if (selectedRow == -1) {
             JOptionPane.showMessageDialog(
@@ -334,6 +351,10 @@ public class FormPhieuNhapThuoc extends JPanel {
      * Xử lý xóa phiếu nhập thuốc
      */
     private void xuLyXoaPhieuNhap() {
+        if (!choPhepSuaXoa) {
+            thongBaoKhongCoQuyen();
+            return;
+        }
         int selectedRow = table.getSelectedRow();
         if (selectedRow == -1) {
             JOptionPane.showMessageDialog(
@@ -444,17 +465,43 @@ public class FormPhieuNhapThuoc extends JPanel {
         }
 
         try {
-            String searchType = (String) cboxSearch.getSelectedItem();
+            int searchType = cboxSearch.getSelectedIndex();
+            String keyword = tuKhoa.toLowerCase();
+            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+            ArrayList<PhieuNhapThuoc> danhSach = pnhDAO.getDSPhieuNhapThuoc();
             ArrayList<PhieuNhapThuoc> ketQua = new ArrayList<>();
 
-            if (searchType.equals("Mã phiếu")) {
-                ketQua = pnhDAO.timKiemPhieuNhap(tuKhoa, null, null, null, null);
-            } else if (searchType.equals("Mã nhân viên")) {
-                ketQua = pnhDAO.timKiemPhieuNhap(null, tuKhoa, null, null, null);
-            } else if (searchType.equals("Mã nhà cung cấp")) {
-                ketQua = pnhDAO.timKiemPhieuNhap(null, null, tuKhoa, null, null);
-            } else {
-                ketQua = pnhDAO.getDSPhieuNhapThuoc();
+            for (PhieuNhapThuoc pnh : danhSach) {
+                String maPhieuNhap = pnh.getMaPhieuNhap();
+                String maNV = pnh.getNhanVien() != null ? pnh.getNhanVien().getMaNV() : "";
+                String maNCC = pnh.getNhaCungCap() != null ? pnh.getNhaCungCap().getMaNCC() : "";
+                String ngayNhap = pnh.getNgayNhap() != null ? sdf.format(pnh.getNgayNhap()) : "";
+
+                boolean match;
+                switch (searchType) {
+                    case 1:
+                        match = containsIgnoreCase(maPhieuNhap, keyword);
+                        break;
+                    case 2:
+                        match = containsIgnoreCase(maNV, keyword);
+                        break;
+                    case 3:
+                        match = containsIgnoreCase(maNCC, keyword);
+                        break;
+                    case 4:
+                        match = matchesNgayNhap(pnh.getNgayNhap(), keyword);
+                        break;
+                    default:
+                        match = containsIgnoreCase(maPhieuNhap, keyword)
+                                || containsIgnoreCase(maNV, keyword)
+                                || containsIgnoreCase(maNCC, keyword)
+                                || matchesNgayNhap(pnh.getNgayNhap(), keyword);
+                        break;
+                }
+
+                if (match) {
+                    ketQua.add(pnh);
+                }
             }
 
             loadTableFromList(ketQua);
@@ -468,6 +515,54 @@ public class FormPhieuNhapThuoc extends JPanel {
                 JOptionPane.ERROR_MESSAGE
             );
         }
+    }
+
+    private boolean containsIgnoreCase(String value, String keyword) {
+        return value != null && value.toLowerCase().contains(keyword);
+    }
+
+    private boolean matchesNgayNhap(Date ngayNhap, String keyword) {
+        if (ngayNhap == null || keyword == null || keyword.trim().isEmpty()) {
+            return false;
+        }
+
+        String normalizedKeyword = keyword.trim().toLowerCase();
+        SimpleDateFormat fullDate = new SimpleDateFormat("dd/MM/yyyy");
+        SimpleDateFormat shortDate = new SimpleDateFormat("d/M/yyyy");
+        SimpleDateFormat monthYear = new SimpleDateFormat("MM/yyyy");
+        SimpleDateFormat isoDate = new SimpleDateFormat("yyyy-MM-dd");
+
+        if (fullDate.format(ngayNhap).toLowerCase().contains(normalizedKeyword)
+                || shortDate.format(ngayNhap).toLowerCase().contains(normalizedKeyword)
+                || monthYear.format(ngayNhap).toLowerCase().contains(normalizedKeyword)
+                || isoDate.format(ngayNhap).toLowerCase().contains(normalizedKeyword)) {
+            return true;
+        }
+
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(ngayNhap);
+        String ngay = String.valueOf(calendar.get(Calendar.DAY_OF_MONTH));
+        String ngay2So = String.format("%02d", calendar.get(Calendar.DAY_OF_MONTH));
+        String thang = String.valueOf(calendar.get(Calendar.MONTH) + 1);
+        String thang2So = String.format("%02d", calendar.get(Calendar.MONTH) + 1);
+        String nam = String.valueOf(calendar.get(Calendar.YEAR));
+
+        if (normalizedKeyword.matches("\\d{1,2}")) {
+            return normalizedKeyword.equals(ngay) || normalizedKeyword.equals(ngay2So);
+        }
+        if (normalizedKeyword.matches("\\d{1,2}/\\d{1,2}")) {
+            return normalizedKeyword.equals(ngay + "/" + thang)
+                    || normalizedKeyword.equals(ngay2So + "/" + thang2So)
+                    || normalizedKeyword.equals(ngay + "/" + thang2So)
+                    || normalizedKeyword.equals(ngay2So + "/" + thang);
+        }
+        if (normalizedKeyword.matches("\\d{4}")) {
+            return normalizedKeyword.equals(nam);
+        }
+
+        String digitsOnlyKeyword = normalizedKeyword.replaceAll("\\D", "");
+        String digitsOnlyDate = fullDate.format(ngayNhap).replaceAll("\\D", "");
+        return !digitsOnlyKeyword.isEmpty() && digitsOnlyDate.contains(digitsOnlyKeyword);
     }
 
     /**
@@ -513,5 +608,16 @@ public class FormPhieuNhapThuoc extends JPanel {
         txtSearch.setText("");
         cboxSearch.setSelectedIndex(0);
         loadTableData();
+    }
+
+    private boolean coQuyenQuanLy(TaiKhoan taiKhoan) {
+        return taiKhoan == null || "Nhân viên quản lý".equals(taiKhoan.getVaiTro());
+    }
+
+    private void thongBaoKhongCoQuyen() {
+        JOptionPane.showMessageDialog(this,
+                "Nhân viên không được phép thực hiện chức năng này",
+                "Không có quyền",
+                JOptionPane.WARNING_MESSAGE);
     }
 }

@@ -4,7 +4,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-import ConnectDB.DatabaseConnection;
+import connectdb.DatabaseConnection;
 import entity.*;
 
 public class PhieuDoiTraDAO {
@@ -1062,7 +1062,6 @@ public class PhieuDoiTraDAO {
     private void adjustChiTietHoaDon(Connection con, String maHD, String maThuoc, int deltaQty, Double donGiaIfInsert) throws SQLException {
         if (maHD == null || maHD.trim().isEmpty() || maThuoc == null || maThuoc.trim().isEmpty()) return;
 
-        System.out.println("[DEBUG] adjustChiTietHoaDon - maHD: " + maHD + ", maThuoc: " + maThuoc + ", deltaQty: " + deltaQty + ", donGiaIfInsert: " + donGiaIfInsert);
 
         String selectSql = "SELECT soLuong, donGia FROM ChiTietHoaDon WHERE maHD = ? AND maThuoc = ?";
         try (PreparedStatement ps = con.prepareStatement(selectSql)) {
@@ -1079,7 +1078,6 @@ public class PhieuDoiTraDAO {
                             up.setString(2, maHD);
                             up.setString(3, maThuoc);
                             int rows = up.executeUpdate();
-                            System.out.println("[DEBUG] Updated ChiTietHoaDon - maHD: " + maHD + ", maThuoc: " + maThuoc + ", newQty: " + newQty + ", rows: " + rows);
                         }
                     } else {
                         String delSql = "DELETE FROM ChiTietHoaDon WHERE maHD = ? AND maThuoc = ?";
@@ -1087,7 +1085,6 @@ public class PhieuDoiTraDAO {
                             del.setString(1, maHD);
                             del.setString(2, maThuoc);
                             int rows = del.executeUpdate();
-                            System.out.println("[DEBUG] Deleted ChiTietHoaDon - maHD: " + maHD + ", maThuoc: " + maThuoc + ", rows: " + rows);
                         }
                     }
                 } else {
@@ -1101,7 +1098,6 @@ public class PhieuDoiTraDAO {
                             ins.setInt(3, deltaQty);
                             ins.setDouble(4, donGia);
                             int rows = ins.executeUpdate();
-                            System.out.println("[DEBUG] Inserted ChiTietHoaDon - maHD: " + maHD + ", maThuoc: " + maThuoc + ", qty: " + deltaQty + ", donGia: " + donGia + ", rows: " + rows);
                         }
                     }
                 }
@@ -1124,7 +1120,6 @@ public class PhieuDoiTraDAO {
     // Helper: tính lại tổng tiền của hóa đơn dựa trên ChiTietHoaDon
     private void recalcHoaDonTotal(Connection con, String maHD) throws SQLException {
         if (maHD == null || maHD.trim().isEmpty()) return;
-        System.out.println("[PhieuDoiTraDAO] recalcHoaDonTotal maHD=" + maHD);
         String sql = "SELECT ISNULL(SUM(soLuong * donGia),0) AS tong FROM ChiTietHoaDon WHERE maHD = ?";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, maHD);
@@ -1136,7 +1131,6 @@ public class PhieuDoiTraDAO {
                         up.setDouble(1, tong);
                         up.setString(2, maHD);
                         int rows = up.executeUpdate();
-                        System.out.println("[PhieuDoiTraDAO] Updated HoaDon.tongTien maHD=" + maHD + " newTong=" + tong + " rows=" + rows);
                     }
                 }
             }

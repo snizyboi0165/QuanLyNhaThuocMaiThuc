@@ -13,19 +13,26 @@ public class KhuyenMai implements Serializable {
     private Date ngayBatDau;
     private Date ngayKetThuc;
     private double phanTramGiamGia;
+    private boolean lapHangNam;
     
     public static final String REGEX_MA_KM = "^KM\\d{5}$";
     
     public KhuyenMai() {
-        this("", "", new Date(), new Date(), 10.0);
+        this("", "", new Date(), new Date(), 10.0, true);
     }
     
     public KhuyenMai(String maKM, String tenKM, Date ngayBatDau, Date ngayKetThuc, double phanTramGiamGia) {
+        this(maKM, tenKM, ngayBatDau, ngayKetThuc, phanTramGiamGia, true);
+    }
+
+    public KhuyenMai(String maKM, String tenKM, Date ngayBatDau, Date ngayKetThuc, double phanTramGiamGia,
+            boolean lapHangNam) {
         setMaKM(maKM);
         setTenKM(tenKM);
         setNgayBatDau(ngayBatDau);
         setNgayKetThuc(ngayKetThuc);
         setPhanTramGiamGia(phanTramGiamGia);
+        setLapHangNam(lapHangNam);
     }
     
     public KhuyenMai(String maKM2) {
@@ -90,6 +97,14 @@ public class KhuyenMai implements Serializable {
     public double getPhanTramGiamGia() {
         return phanTramGiamGia;
     }
+
+    public boolean isLapHangNam() {
+        return lapHangNam;
+    }
+
+    public void setLapHangNam(boolean lapHangNam) {
+        this.lapHangNam = lapHangNam;
+    }
     
     @Override
     public String toString() {
@@ -99,6 +114,7 @@ public class KhuyenMai implements Serializable {
                 ", ngayBatDau=" + ngayBatDau +
                 ", ngayKetThuc=" + ngayKetThuc +
                 ", phanTramGiamGia=" + phanTramGiamGia + "%" +
+                ", lapHangNam=" + lapHangNam +
                 '}';
     }
     

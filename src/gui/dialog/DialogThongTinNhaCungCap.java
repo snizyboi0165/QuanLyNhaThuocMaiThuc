@@ -1,11 +1,9 @@
-﻿package gui.dialog;
+package gui.dialog;
 
 import java.awt.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import entity.NhaCungCap;
-import java.text.NumberFormat;
-import java.util.Locale;
 
 public class DialogThongTinNhaCungCap extends JDialog {
     
@@ -38,9 +36,6 @@ public class DialogThongTinNhaCungCap extends JDialog {
         Font labelFont = new Font("Roboto", Font.BOLD, 15);
         Font valueFont = new Font("Roboto", Font.PLAIN, 15);
 
-        // Định dạng tiền tệ
-        NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
-
         // Dữ liệu
         gbc.gridx = 0; gbc.gridy = 0;
         JLabel lblMa = new JLabel("Mã nhà cung cấp:");
@@ -68,16 +63,6 @@ public class DialogThongTinNhaCungCap extends JDialog {
         JLabel valSDT = new JLabel(ncc.getSoDienThoai());
         valSDT.setFont(valueFont);
         contentPanel.add(valSDT, gbc);
-
-        gbc.gridx = 0; gbc.gridy = 3;
-        JLabel lblCongNo = new JLabel("Công nợ:");
-        lblCongNo.setFont(labelFont);
-        contentPanel.add(lblCongNo, gbc);
-        gbc.gridx = 1;
-        JLabel valCongNo = new JLabel(currencyFormatter.format(ncc.getCongNo()));
-        valCongNo.setFont(valueFont);
-        valCongNo.setForeground(Color.RED);
-        contentPanel.add(valCongNo, gbc);
 
         add(contentPanel, BorderLayout.CENTER);
         

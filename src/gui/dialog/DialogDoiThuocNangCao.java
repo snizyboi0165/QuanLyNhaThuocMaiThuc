@@ -752,7 +752,6 @@ public class DialogDoiThuocNangCao extends JDialog {
 
                     detailsLog.append(String.format("- Trả lại: %s (SL=%d)\n", maThuoc, returnedQty));
 
-                    System.out.println("[DEBUG] Inserting returned chiTiet: maPhieu=" + chiTiet.getMaPhieuDoiTra() + ", maThuoc=" + thuoc.getMaThuoc() + ", soLuong=" + chiTiet.getSoLuongCu());
 
                     if (!phieuDoiTraDAO.themChiTietPhieuDoiTra(chiTiet)) {
                         return false;
@@ -792,7 +791,6 @@ public class DialogDoiThuocNangCao extends JDialog {
 
                     detailsLog.append(String.format("- Nhập thêm: %s (SL=%d)\n", maThuoc, addedQty));
 
-                    System.out.println("[DEBUG] Inserting added chiTiet: maPhieu=" + chiTiet.getMaPhieuDoiTra() + ", maThuocMoi=" + thuocMoi.getMaThuoc() + ", soLuongThayThe=" + chiTiet.getSoLuongThayThe() + ", donGiaThayThe=" + chiTiet.getDonGiaThayThe());
 
                     if (!phieuDoiTraDAO.themChiTietPhieuDoiTra(chiTiet)) {
                         return false;

@@ -1,4 +1,4 @@
-﻿package gui.dialog;
+package gui.dialog;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -89,7 +89,7 @@ public class DialogChiTietHoaDon extends JDialog {
         JLabel lblTitle = new JLabel("CHI TIẾT HÓA ĐƠN");
         lblTitle.setFont(new Font("Roboto", Font.BOLD, 28));
         lblTitle.setForeground(Color.WHITE);
-        lblTitle.setIcon(new FlatSVGIcon("./img/info.svg", 32, 32));
+        lblTitle.setIcon(new FlatSVGIcon(getClass().getResource("/img/info.svg")).derive(32, 32));
         headerPanel.add(lblTitle);
         
         // Info Panel
@@ -289,9 +289,9 @@ public class DialogChiTietHoaDon extends JDialog {
             // Lấy thông tin nhân viên
             NhanVien nv = nhanVienDAO.getNhanVienTheoMa(hoaDon.getNhanVien().getMaNV());
             if (nv != null) {
-                lblNhanVien.setText(nv.getTenNV());
+                lblNhanVien.setText(dinhDangTenNhanVien(nv.getTenNV()));
             } else {
-                lblNhanVien.setText(hoaDon.getNhanVien().getMaNV());
+                lblNhanVien.setText("N/A");
             }
             
             // Lấy thông tin khách hàng
@@ -334,18 +334,18 @@ public class DialogChiTietHoaDon extends JDialog {
             // Hiển thị tạm tính
             lblTongTien.setText(String.format("%,.0f VNĐ", tamTinh));
             
-            // Keep original amount for tax calculation
             double tamTinhGoc = tamTinh;
             
          // Tính khuyến mãi
             double tienGiamGia = 0;
+            double tienSauGiamGia = tamTinhGoc;
             if (hoaDon.getKhuyenMai() != null && hoaDon.getKhuyenMai().getMaKM() != null) {
                 try {
                     KhuyenMai km = khuyenMaiDAO.getKhuyenMaiTheoMa(hoaDon.getKhuyenMai().getMaKM());
                     if (km != null) {
                         double tyLeGiam = km.getPhanTramGiamGia();
                         tienGiamGia = tamTinhGoc * (tyLeGiam / 100);
-                        tamTinh = tamTinhGoc - tienGiamGia;
+                        tienSauGiamGia = tamTinhGoc - tienGiamGia;
                         lblKhuyenMai.setText(String.format("%.0f%% (-%,.0f VNĐ)", tyLeGiam, tienGiamGia));
                     }
                 } catch (Exception e) {
@@ -361,10 +361,9 @@ public class DialogChiTietHoaDon extends JDialog {
             if (hoaDon.getThue() != null && hoaDon.getThue().getMaThue() != null) {
                 try {
                     Thue thue = thueDAO.getThueTheoMa(hoaDon.getThue().getMaThue());
-                    if (thue != null && tamTinhGoc > 0) {
+                    if (thue != null && tienSauGiamGia > 0) {
                         tyLeThue = thue.getPhanTramThue();
-                        tienThue = tamTinhGoc * (tyLeThue / 100);  // Use original amount, not discounted
-                        tamTinh = tamTinh + tienThue;
+                        tienThue = tienSauGiamGia * (tyLeThue / 100);
                         lblThue.setText(String.format("%.0f%% (+%,.0f VNĐ)", tyLeThue, tienThue));
                     }
                 } catch (Exception e) {
@@ -374,7 +373,8 @@ public class DialogChiTietHoaDon extends JDialog {
                 lblThue.setText("0 VNĐ");
             }
             
-            lblThanhToan.setText(String.format("%,.0f VNĐ", tamTinh));
+            double tongThanhToan = tienSauGiamGia + tienThue;
+            lblThanhToan.setText(String.format("%,.0f VNĐ", tongThanhToan));
             
         } catch (SQLException e) {
             e.printStackTrace();
@@ -383,6 +383,13 @@ public class DialogChiTietHoaDon extends JDialog {
                 "Lỗi",
                 JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    private String dinhDangTenNhanVien(String tenNhanVien) {
+        if (tenNhanVien == null || tenNhanVien.trim().isEmpty()) {
+            return "N/A";
+        }
+        return tenNhanVien.replaceAll("\\s*\\(NV\\d+\\)\\s*$", "").trim();
     }
 
 }

@@ -1,4 +1,4 @@
-﻿package gui.form;
+package gui.form;
 
 import java.awt.*;
 import java.awt.event.*;
@@ -17,7 +17,7 @@ import dao.NhanVienDAO;
 import entity.NhanVien;
 import gui.dialog.DialogChiTietNhanVien;
 
-public class formTimKiemNV extends JPanel 
+public class FormTimKiemNV extends JPanel 
 {
     // Search Panel Components
     private JTextField txtMaNV;
@@ -52,7 +52,7 @@ public class formTimKiemNV extends JPanel
     private Font titleFont = new Font("Roboto", Font.BOLD, 24);
     private Font headerTableFont = new Font("Roboto", Font.BOLD, 16);
     
-    public formTimKiemNV() {
+    public FormTimKiemNV() {
         nvDAO = new NhanVienDAO();
         initComponents();
         hienThiTatCaNhanVien();
@@ -91,7 +91,7 @@ public class formTimKiemNV extends JPanel
         lblTitle.setForeground(Color.WHITE);
         lblTitle.setHorizontalAlignment(SwingConstants.CENTER);
         
-        JLabel lblIcon = new JLabel(new FlatSVGIcon("./img/search.svg"));
+        JLabel lblIcon = new JLabel(new FlatSVGIcon(getClass().getResource("/img/search.svg")));
         lblIcon.setBorder(new EmptyBorder(0, 20, 0, 0));
         
         headerPanel.add(lblIcon, BorderLayout.WEST);

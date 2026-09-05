@@ -1,4 +1,4 @@
-﻿package gui.form;
+package gui.form;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -8,6 +8,7 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
 
 import dao.TaiKhoanDAO;
 import entity.TaiKhoan;
+import utils.TableUtils;
 
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -15,7 +16,6 @@ import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.sql.SQLException;
-import java.util.ArrayList;
 
 public class Login extends JFrame implements ActionListener 
 {
@@ -28,6 +28,7 @@ public class Login extends JFrame implements ActionListener
     
     public Login() 
     {
+        TableUtils.installGlobalTableLock();
         initComponents();
         dsTK = new TaiKhoanDAO();
     }
@@ -219,7 +220,7 @@ public class Login extends JFrame implements ActionListener
         // Footer Label
         gbc.gridy = 7;
         gbc.insets = new Insets(20, 0, 0, 0);
-        JLabel lblFooter = new JLabel("© 2025 Nguyên Hưng Management System");
+        JLabel lblFooter = new JLabel("© 2026 Mai Thức Management System");
         lblFooter.setFont(new Font("Roboto", Font.ITALIC, 11));
         lblFooter.setForeground(new Color(150, 150, 150));
         lblFooter.setHorizontalAlignment(SwingConstants.CENTER);
@@ -284,24 +285,22 @@ public class Login extends JFrame implements ActionListener
         // Perform login in background thread
         SwingWorker<Boolean, Void> worker = new SwingWorker<Boolean, Void>() {
             private TaiKhoan foundAccount = null;
+            private boolean inactiveAccount = false;
             
             @Override
             protected Boolean doInBackground() throws Exception {
-                ArrayList<TaiKhoan> ds = dsTK.dsTaiKhoan();
-                
-                for (TaiKhoan t : ds) {
-                    if (username.equalsIgnoreCase(t.getTenDangNhap().trim())) {
-                        foundAccount = t;
-                        break;
-                    }
-                }
-                
+                foundAccount = dsTK.timTaiKhoanTheoTen(username);
                 if (foundAccount == null) {
                     return false;
                 }
                 
                 String validPass = foundAccount.getMatKhau().trim();
-                return validPass.equals(pass);
+                if (!validPass.equals(pass)) {
+                    return false;
+                }
+
+                inactiveAccount = !isActiveAccount(foundAccount);
+                return !inactiveAccount;
             }
             
             @Override
@@ -314,6 +313,10 @@ public class Login extends JFrame implements ActionListener
                     
                     if (foundAccount == null) {
                         showError("Tài khoản không tồn tại!");
+                        txtUsername.requestFocus();
+                        txtUsername.selectAll();
+                    } else if (inactiveAccount) {
+                        showError("Tài khoản này đang ngừng hoạt động, không thể đăng nhập!");
                         txtUsername.requestFocus();
                         txtUsername.selectAll();
                     } else if (!success) {
@@ -347,6 +350,12 @@ public class Login extends JFrame implements ActionListener
         
         worker.execute();
     }
+
+    private boolean isActiveAccount(TaiKhoan account) {
+        return account != null
+                && account.getTrangThai() != null
+                && "Hoạt động".equalsIgnoreCase(account.getTrangThai().trim());
+    }
     
     private void showError(String message) {
         JOptionPane.showMessageDialog(this, 
@@ -365,6 +374,7 @@ public class Login extends JFrame implements ActionListener
     public static void main(String[] args) {
         try {
             UIManager.setLookAndFeel(new FlatLightLaf());
+            TableUtils.installGlobalTableLock();
             
             // Custom UI properties
             UIManager.put("Button.arc", 10);

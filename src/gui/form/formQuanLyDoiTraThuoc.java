@@ -1,5 +1,10 @@
 package gui.form;
 
+import dao.NhanVienDAO;
+import dao.PhieuDoiTraDAO;
+import entity.NhanVien;
+import entity.PhieuDoiTra;
+import gui.dialog.DialogDoiThuocNangCao;
 import java.awt.*;
 import java.awt.event.*;
 import java.sql.SQLException;
@@ -8,16 +13,10 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Locale;
 import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
 
-import dao.PhieuDoiTraDAO;
-import dao.NhanVienDAO;
-import entity.PhieuDoiTra;
-import gui.dialog.DialogDoiThuocNangCao;
-import entity.NhanVien;
-
-public class formQuanLyDoiTraThuoc extends JPanel {
+public class FormQuanLyDoiTraThuoc extends JPanel {
     private JTable table;
     private DefaultTableModel tableModel;
     private PhieuDoiTraDAO phieuDoiTraDAO;
@@ -32,7 +31,7 @@ public class formQuanLyDoiTraThuoc extends JPanel {
     private String currentUser = "NV00001"; // Tạm thời hardcode
     private NumberFormat currencyFormat;
     
-    public formQuanLyDoiTraThuoc() {
+    public FormQuanLyDoiTraThuoc() {
         this.phieuDoiTraDAO = new PhieuDoiTraDAO();
         this.nvDAO = new NhanVienDAO();
         this.currencyFormat = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));

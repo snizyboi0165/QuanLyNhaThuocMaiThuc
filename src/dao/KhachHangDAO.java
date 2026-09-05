@@ -7,7 +7,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 
-import ConnectDB.DatabaseConnection;
+import connectdb.DatabaseConnection;
 import entity.KhachHang;
 
 public class KhachHangDAO {
@@ -23,22 +23,59 @@ public class KhachHangDAO {
         }
         return conn;
     }
+
+    private void ensureDaXoaColumn(Connection con) throws SQLException {
+        String checkSql = "SELECT COL_LENGTH('dbo.KhachHang', 'daXoa')";
+        try (Statement stmt = con.createStatement();
+             ResultSet rs = stmt.executeQuery(checkSql)) {
+            if (rs.next() && rs.getObject(1) != null) {
+                return;
+            }
+        }
+
+        try (Statement stmt = con.createStatement()) {
+            stmt.executeUpdate("ALTER TABLE KhachHang ADD daXoa BIT DEFAULT 0 NOT NULL");
+        }
+    }
+
+    private KhachHang mapKhachHang(ResultSet rs) throws SQLException {
+        return new KhachHang(
+            rs.getString("maKH"),
+            rs.getString("hoTen"),
+            rs.getString("soDienThoai"),
+            rs.getString("email")
+        );
+    }
 	
     public KhachHang getKhachHangTheoSDT(String soDienThoai) throws SQLException {
+        String sql = "SELECT * FROM KhachHang WHERE soDienThoai = ? AND daXoa = 0";
+        try (Connection con = getSafeConnection()) {
+            ensureDaXoaColumn(con);
+            try (PreparedStatement pstmt = con.prepareStatement(sql)) {
+            
+                pstmt.setString(1, soDienThoai);
+                ResultSet rs = pstmt.executeQuery();
+            
+                if (rs.next()) {
+                    return mapKhachHang(rs);
+                }
+            }
+        }
+        return null;
+    }
+
+    public KhachHang getKhachHangTheoSDTBaoGomDaAn(String soDienThoai) throws SQLException {
         String sql = "SELECT * FROM KhachHang WHERE soDienThoai = ?";
-        try (Connection con = getSafeConnection();
-             PreparedStatement pstmt = con.prepareStatement(sql)) {
-            
-            pstmt.setString(1, soDienThoai);
-            ResultSet rs = pstmt.executeQuery();
-            
-            if (rs.next()) {
-                return new KhachHang(
-                    rs.getString("maKH"),
-                    rs.getString("hoTen"),
-                    rs.getString("soDienThoai"),
-                    rs.getString("email")
-                );
+        try (Connection con = getSafeConnection()) {
+            ensureDaXoaColumn(con);
+            try (PreparedStatement pstmt = con.prepareStatement(sql)) {
+
+                pstmt.setString(1, soDienThoai);
+                ResultSet rs = pstmt.executeQuery();
+
+                if (rs.next()) {
+                    return mapKhachHang(rs);
+                }
             }
         }
         return null;
@@ -49,19 +86,15 @@ public class KhachHangDAO {
      */
     public ArrayList<KhachHang> getDSKhachHang() throws SQLException {
         ArrayList<KhachHang> dsKH = new ArrayList<>();
-        String sql = "SELECT * FROM KhachHang ORDER BY maKH";
-        try (Connection con = getSafeConnection();
-             Statement stmt = con.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+        String sql = "SELECT * FROM KhachHang WHERE daXoa = 0 ORDER BY maKH";
+        try (Connection con = getSafeConnection()) {
+            ensureDaXoaColumn(con);
+            try (Statement stmt = con.createStatement();
+                 ResultSet rs = stmt.executeQuery(sql)) {
             
-            while (rs.next()) {
-                KhachHang kh = new KhachHang(
-                    rs.getString("maKH"),
-                    rs.getString("hoTen"),
-                    rs.getString("soDienThoai"),
-                    rs.getString("email")
-                );
-                dsKH.add(kh);
+                while (rs.next()) {
+                    dsKH.add(mapKhachHang(rs));
+                }
             }
         }
         return dsKH;
@@ -92,17 +125,18 @@ public class KhachHangDAO {
      * Thêm khách hàng mới vào database
      */
     public boolean themKhachHang(KhachHang kh) throws SQLException {
-        String sql = "INSERT INTO KhachHang(maKH, hoTen, soDienThoai, email) VALUES (?, ?, ?, ?)";
-        try (Connection con = getSafeConnection();
-             PreparedStatement stmt = con.prepareStatement(sql)) {
+        String sql = "INSERT INTO KhachHang(maKH, hoTen, soDienThoai, email, daXoa) VALUES (?, ?, ?, ?, 0)";
+        try (Connection con = getSafeConnection()) {
+            ensureDaXoaColumn(con);
+            try (PreparedStatement stmt = con.prepareStatement(sql)) {
             
-            stmt.setString(1, kh.getMaKH());
-            stmt.setString(2, kh.getHoTen());
-            stmt.setString(3, kh.getSoDienThoai());
-            stmt.setString(4, kh.getEmail());
-            
-            int rowsAffected = stmt.executeUpdate();
-            return rowsAffected > 0;
+                stmt.setString(1, kh.getMaKH());
+                stmt.setString(2, kh.getHoTen());
+                stmt.setString(3, kh.getSoDienThoai());
+                stmt.setString(4, kh.getEmail());
+                int rowsAffected = stmt.executeUpdate();
+                return rowsAffected > 0;
+            }
         } catch (SQLException e) {
             e.printStackTrace();
             throw e;
@@ -116,17 +150,13 @@ public class KhachHangDAO {
         String sql = "SELECT * FROM KhachHang WHERE maKH = ?";
         try (Connection con = getSafeConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
+            ensureDaXoaColumn(con);
             
             stmt.setString(1, maKH);
             ResultSet rs = stmt.executeQuery();
             
             if (rs.next()) {
-                return new KhachHang(
-                    rs.getString("maKH"),
-                    rs.getString("hoTen"),
-                    rs.getString("soDienThoai"),
-                    rs.getString("email")
-                );
+                return mapKhachHang(rs);
             }
         }
         return null;
@@ -139,6 +169,7 @@ public class KhachHangDAO {
         String sql = "UPDATE KhachHang SET hoTen = ?, soDienThoai = ?, email = ? WHERE maKH = ?";
         try (Connection con = getSafeConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
+            ensureDaXoaColumn(con);
             
             stmt.setString(1, kh.getHoTen());
             stmt.setString(2, kh.getSoDienThoai());
@@ -157,14 +188,16 @@ public class KhachHangDAO {
      * Xóa khách hàng theo mã
      */
     public boolean xoaKhachHang(String maKH) throws SQLException {
-        String sql = "DELETE FROM KhachHang WHERE maKH = ?";
-        try (Connection con = getSafeConnection();
-             PreparedStatement stmt = con.prepareStatement(sql)) {
+        String sql = "UPDATE KhachHang SET daXoa = 1 WHERE maKH = ?";
+        try (Connection con = getSafeConnection()) {
+            ensureDaXoaColumn(con);
+            try (PreparedStatement stmt = con.prepareStatement(sql)) {
             
-            stmt.setString(1, maKH);
+                stmt.setString(1, maKH);
             
-            int rowsAffected = stmt.executeUpdate();
-            return rowsAffected > 0;
+                int rowsAffected = stmt.executeUpdate();
+                return rowsAffected > 0;
+            }
         } catch (SQLException e) {
             e.printStackTrace();
             throw e;
@@ -179,7 +212,7 @@ public class KhachHangDAO {
     {
         ArrayList<KhachHang> dsKH = new ArrayList<>();
 
-        StringBuilder sql = new StringBuilder("SELECT * FROM KhachHang WHERE 1=1");
+        StringBuilder sql = new StringBuilder("SELECT * FROM KhachHang WHERE daXoa = 0");
 
         // Xây dựng câu truy vấn động theo tiêu chí nhập
         if(!maKH.isEmpty()) 
@@ -199,37 +232,33 @@ public class KhachHangDAO {
     	{
     		sql.append(" AND email LIKE ?");
     	}
-        try (Connection con = getSafeConnection();
-             PreparedStatement stmt = con.prepareStatement(sql.toString())) 
-        {
-
-            int index = 1;
-            if(!maKH.isEmpty()) 
-        	{
-            	stmt.setString(index++, "%" + maKH + "%");
-        	}
-            if(!hoTen.isEmpty())
-        	{
-            	stmt.setString(index++, "%" + hoTen + "%");
-        	}
-            if(!soDienThoai.isEmpty())
-        	{
-            	stmt.setString(index++, "%" + soDienThoai + "%");
-        	}
-            if(!email.isEmpty())
-        	{
-            	stmt.setString(index++, "%" + email + "%");
-        	}
-            ResultSet rs = stmt.executeQuery();
-            while(rs.next()) 
+        try (Connection con = getSafeConnection()) {
+            ensureDaXoaColumn(con);
+            try (PreparedStatement stmt = con.prepareStatement(sql.toString())) 
             {
-                KhachHang kh = new KhachHang(
-                    rs.getString("maKH"),
-                    rs.getString("hoTen"),
-                    rs.getString("soDienThoai"),
-                    rs.getString("email")
-                );
-                dsKH.add(kh);
+
+                int index = 1;
+                if(!maKH.isEmpty()) 
+            	{
+                	stmt.setString(index++, "%" + maKH + "%");
+            	}
+                if(!hoTen.isEmpty())
+            	{
+                	stmt.setString(index++, "%" + hoTen + "%");
+            	}
+                if(!soDienThoai.isEmpty())
+            	{
+                	stmt.setString(index++, "%" + soDienThoai + "%");
+            	}
+                if(!email.isEmpty())
+            	{
+                	stmt.setString(index++, "%" + email + "%");
+            	}
+                ResultSet rs = stmt.executeQuery();
+                while(rs.next()) 
+                {
+                    dsKH.add(mapKhachHang(rs));
+                }
             }
         }
         return dsKH;
@@ -243,6 +272,7 @@ public class KhachHangDAO {
         String sql = "SELECT COUNT(*) FROM KhachHang WHERE soDienThoai = ?";
         try (Connection con = getSafeConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
+            ensureDaXoaColumn(con);
             
             stmt.setString(1, soDienThoai);
             ResultSet rs = stmt.executeQuery();
@@ -252,5 +282,30 @@ public class KhachHangDAO {
             }
         }
         return false;
+    }
+
+    public boolean khachHangDangHoatDong(String maKH) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM KhachHang WHERE maKH = ? AND daXoa = 0";
+        try (Connection con = getSafeConnection()) {
+            ensureDaXoaColumn(con);
+            try (PreparedStatement stmt = con.prepareStatement(sql)) {
+                stmt.setString(1, maKH);
+                ResultSet rs = stmt.executeQuery();
+                return rs.next() && rs.getInt(1) > 0;
+            }
+        }
+    }
+
+    public boolean khoiPhucKhachHang(KhachHang kh) throws SQLException {
+        String sql = "UPDATE KhachHang SET hoTen = ?, email = ?, daXoa = 0 WHERE maKH = ?";
+        try (Connection con = getSafeConnection()) {
+            ensureDaXoaColumn(con);
+            try (PreparedStatement stmt = con.prepareStatement(sql)) {
+                stmt.setString(1, kh.getHoTen());
+                stmt.setString(2, kh.getEmail());
+                stmt.setString(3, kh.getMaKH());
+                return stmt.executeUpdate() > 0;
+            }
+        }
     }
 }

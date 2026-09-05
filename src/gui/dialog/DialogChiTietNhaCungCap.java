@@ -1,16 +1,13 @@
-﻿package gui.dialog;
+package gui.dialog;
 
 import entity.NhaCungCap;
 import java.awt.*;
-import java.text.DecimalFormat;
 import javax.swing.*;
 import javax.swing.border.*;
 
 public class DialogChiTietNhaCungCap extends JDialog {
     
     private final NhaCungCap nhaCungCap;
-    private final DecimalFormat df = new DecimalFormat("#,##0.00");
-    
     public DialogChiTietNhaCungCap(Frame parent, NhaCungCap ncc) {
         super(parent, "Thông tin chi tiết nhà cung cấp", true);
         
@@ -65,28 +62,6 @@ public class DialogChiTietNhaCungCap extends JDialog {
         
         // Số điện thoại
         addInfoRow(contentPanel, gbc, row++, "Số điện thoại:", nhaCungCap.getSoDienThoai(), labelFont, valueFont);
-        
-        // Công nợ
-        gbc.gridx = 0;
-        gbc.gridy = row;
-        gbc.weightx = 0.3;
-        JLabel lblCongNo = new JLabel("Công nợ:");
-        lblCongNo.setFont(labelFont);
-        contentPanel.add(lblCongNo, gbc);
-        
-        gbc.gridx = 1;
-        gbc.weightx = 0.7;
-        String congNoStr = df.format(nhaCungCap.getCongNo()) + " đ";
-        JLabel lblCongNoValue = new JLabel(congNoStr);
-        lblCongNoValue.setFont(valueFont);
-        
-        // Màu sắc theo mức công nợ
-        if (nhaCungCap.getCongNo() > 0) {
-            lblCongNoValue.setForeground(new Color(255, 87, 34)); // Màu cam - có công nợ
-        } else {
-            lblCongNoValue.setForeground(new Color(46, 125, 50)); // Màu xanh lá - không công nợ
-        }
-        contentPanel.add(lblCongNoValue, gbc);
         
         add(contentPanel, BorderLayout.CENTER);
         

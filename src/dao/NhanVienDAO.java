@@ -8,7 +8,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 
-import ConnectDB.DatabaseConnection;
+import connectdb.DatabaseConnection;
 import entity.NhanVien;
 
 public class NhanVienDAO {
@@ -196,17 +196,33 @@ public class NhanVienDAO {
     
     // Xoá mềm, nếu xoá thì daXoa = 1
     public boolean xoaNhanVien(String maNV) throws SQLException {
-        String sql = "UPDATE NhanVien SET daXoa = 1 WHERE maNV = ?";
+        String sqlXoaNhanVien = "UPDATE NhanVien SET daXoa = 1 WHERE maNV = ?";
+        String sqlKhoaTaiKhoan = "UPDATE TaiKhoan SET trangThai = N'Ngừng hoạt động' WHERE maNV = ?";
+
         try (Connection con = getSafeConnection()) {
-            PreparedStatement stmt = con.prepareStatement(sql);
-            stmt.setString(1, maNV);
-            
-            int rowsAffected = stmt.executeUpdate();
-            return rowsAffected > 0;
-        }
-        catch (SQLException e) {
-            e.printStackTrace();
-            return false;
+            boolean oldAutoCommit = con.getAutoCommit();
+            con.setAutoCommit(false);
+            try (PreparedStatement stmtXoa = con.prepareStatement(sqlXoaNhanVien);
+                 PreparedStatement stmtKhoa = con.prepareStatement(sqlKhoaTaiKhoan)) {
+
+                stmtXoa.setString(1, maNV);
+                int rowsAffected = stmtXoa.executeUpdate();
+                if (rowsAffected == 0) {
+                    con.rollback();
+                    return false;
+                }
+
+                stmtKhoa.setString(1, maNV);
+                stmtKhoa.executeUpdate();
+
+                con.commit();
+                return true;
+            } catch (SQLException e) {
+                con.rollback();
+                throw e;
+            } finally {
+                con.setAutoCommit(oldAutoCommit);
+            }
         }
     }
     

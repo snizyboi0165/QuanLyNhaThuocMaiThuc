@@ -1,4 +1,4 @@
-﻿package gui.dialog;
+package gui.dialog;
 
 import java.awt.*;
 import javax.swing.*;
@@ -6,7 +6,7 @@ import javax.swing.border.*;
 import com.toedter.calendar.JDateChooser;
 import dao.KhuyenMaiDAO;
 import entity.KhuyenMai;
-import gui.form.formKhuyenMai;
+import gui.form.FormKhuyenMai;
 
 import java.util.Date;
 
@@ -18,10 +18,10 @@ public class DialogCapNhatKhuyenMai extends JDialog {
     private JSpinner spinnerPhanTram;
 
     private KhuyenMaiDAO kmDAO;
-    private formKhuyenMai parentForm;
+    private FormKhuyenMai parentForm;
     private KhuyenMai khuyenMai; // Đối tượng khuyến mãi cần cập nhật
 
-    public DialogCapNhatKhuyenMai(Frame parent, formKhuyenMai form, KhuyenMai km) {
+    public DialogCapNhatKhuyenMai(Frame parent, FormKhuyenMai form, KhuyenMai km) {
         super(parent, "Cập Nhật Thông Tin Khuyến Mãi", true);
         this.parentForm = form;
         this.khuyenMai = km;

@@ -1,18 +1,42 @@
-﻿package gui.form;
+package gui.form;
 
 import java.awt.*;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
 import com.formdev.flatlaf.extras.FlatSVGIcon;
+import com.itextpdf.text.BaseColor;
+import com.itextpdf.text.Element;
+import com.itextpdf.text.PageSize;
+import com.itextpdf.text.Paragraph;
+import com.itextpdf.text.Phrase;
+import com.itextpdf.text.pdf.BaseFont;
+import com.itextpdf.text.pdf.PdfPCell;
+import com.itextpdf.text.pdf.PdfPTable;
+import com.itextpdf.text.pdf.PdfWriter;
 
+import dao.ChiTietHoaDonDAO;
 import dao.HoaDonDAO;
+import dao.KhachHangDAO;
+import dao.KhuyenMaiDAO;
+import dao.NhanVienDAO;
+import dao.ThuocDAO;
+import dao.ThueDAO;
+import entity.ChiTietHoaDon;
 import entity.HoaDon;
+import entity.KhachHang;
+import entity.KhuyenMai;
+import entity.NhanVien;
+import entity.Thue;
+import entity.Thuoc;
 import gui.dialog.DialogChiTietHoaDon;
 
 public class FormTimKiemHoaDon extends JPanel 
@@ -33,7 +57,7 @@ public class FormTimKiemHoaDon extends JPanel
    
     private JButton btnTimKiem;
     private JButton btnLamMoi;
-    private JButton btnXuatExcel;
+    private JButton btnXuatHoaDon;
     private JButton btnXemChiTiet;
     
  
@@ -44,6 +68,12 @@ public class FormTimKiemHoaDon extends JPanel
     
     
     private HoaDonDAO hoaDonDAO;
+    private ChiTietHoaDonDAO chiTietHoaDonDAO;
+    private ThuocDAO thuocDAO;
+    private KhachHangDAO khachHangDAO;
+    private NhanVienDAO nhanVienDAO;
+    private ThueDAO thueDAO;
+    private KhuyenMaiDAO khuyenMaiDAO;
     
    
     private SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
@@ -56,6 +86,12 @@ public class FormTimKiemHoaDon extends JPanel
     
     public FormTimKiemHoaDon() {
         hoaDonDAO = new HoaDonDAO();
+        chiTietHoaDonDAO = new ChiTietHoaDonDAO();
+        thuocDAO = new ThuocDAO();
+        khachHangDAO = new KhachHangDAO();
+        nhanVienDAO = new NhanVienDAO();
+        thueDAO = new ThueDAO();
+        khuyenMaiDAO = new KhuyenMaiDAO();
         initComponents();
         hienThiTatCaHoaDon();
     }
@@ -93,7 +129,7 @@ public class FormTimKiemHoaDon extends JPanel
         lblTitle.setForeground(Color.WHITE);
         lblTitle.setHorizontalAlignment(SwingConstants.CENTER);
         
-        JLabel lblIcon = new JLabel(new FlatSVGIcon("./img/search.svg"));
+        JLabel lblIcon = new JLabel(new FlatSVGIcon(getClass().getResource("/img/search.svg")));
         lblIcon.setBorder(new EmptyBorder(0, 20, 0, 0));
         
         headerPanel.add(lblIcon, BorderLayout.WEST);
@@ -217,21 +253,21 @@ public class FormTimKiemHoaDon extends JPanel
         btnLamMoi.setIcon(new FlatSVGIcon(getClass().getResource("/img/reload.svg")));
         btnLamMoi.addActionListener(e -> lamMoi());
         
-        // Nút Xuất Excel
-        btnXuatExcel = new JButton("XUẤT EXCEL");
-        btnXuatExcel.setFont(new Font("Roboto", Font.BOLD, 14));
-        btnXuatExcel.setPreferredSize(new Dimension(150, 40));
-        btnXuatExcel.setBackground(new Color(46, 125, 50));
-        btnXuatExcel.setForeground(Color.WHITE);
-        btnXuatExcel.setFocusPainted(false);
-        btnXuatExcel.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnXuatExcel.setBorder(new LineBorder(new Color(46, 125, 50), 2, true));
-        btnXuatExcel.setIcon(new FlatSVGIcon(getClass().getResource("/img/excel.svg")));
-        btnXuatExcel.addActionListener(e -> xuatExcel());
+        // Nút Xuất hóa đơn
+        btnXuatHoaDon = new JButton("XUẤT HÓA ĐƠN");
+        btnXuatHoaDon.setFont(new Font("Roboto", Font.BOLD, 14));
+        btnXuatHoaDon.setPreferredSize(new Dimension(180, 40));
+        btnXuatHoaDon.setBackground(new Color(46, 125, 50));
+        btnXuatHoaDon.setForeground(Color.WHITE);
+        btnXuatHoaDon.setFocusPainted(false);
+        btnXuatHoaDon.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnXuatHoaDon.setBorder(new LineBorder(new Color(46, 125, 50), 2, true));
+        btnXuatHoaDon.setIcon(new FlatSVGIcon(getClass().getResource("/img/bill.svg")));
+        btnXuatHoaDon.addActionListener(e -> xuatHoaDon());
         
         buttonPanel.add(btnTimKiem);
         buttonPanel.add(btnLamMoi);
-        buttonPanel.add(btnXuatExcel);
+        buttonPanel.add(btnXuatHoaDon);
         
         return buttonPanel;
     }
@@ -491,7 +527,7 @@ public class FormTimKiemHoaDon extends JPanel
     }
     
     
-    private void xuatExcel() {
+    private void xuatHoaDon() {
         if (tableModel.getRowCount() == 0) {
             JOptionPane.showMessageDialog(this,
                 "Không có dữ liệu để xuất!",
@@ -499,13 +535,172 @@ public class FormTimKiemHoaDon extends JPanel
                 JOptionPane.WARNING_MESSAGE);
             return;
         }
-        
-        JOptionPane.showMessageDialog(this,
-            "Chức năng xuất Excel đang được phát triển!",
-            "Thông báo",
-            JOptionPane.INFORMATION_MESSAGE);
-        
-        // TODO: Implement Excel export
+
+        int selectedRow = table.getSelectedRow();
+        if (selectedRow == -1) {
+            JOptionPane.showMessageDialog(this,
+                "Vui lòng chọn hóa đơn cần xuất!",
+                "Thông báo",
+                JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int modelRow = table.convertRowIndexToModel(selectedRow);
+        String maHD = tableModel.getValueAt(modelRow, 0).toString();
+        try {
+            String outputPath = taoFilePdfHoaDon(maHD);
+            JOptionPane.showMessageDialog(this,
+                "Xuất hóa đơn thành công!\nĐã lưu tại: " + outputPath,
+                "Thông báo",
+                JOptionPane.INFORMATION_MESSAGE);
+            if (Desktop.isDesktopSupported()) {
+                Desktop.getDesktop().open(new File(outputPath));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this,
+                "Lỗi khi xuất hóa đơn: " + e.getMessage(),
+                "Lỗi",
+                JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private String taoFilePdfHoaDon(String maHD) throws Exception {
+        HoaDon hoaDon = hoaDonDAO.getHoaDonTheoMa(maHD);
+        if (hoaDon == null) {
+            throw new SQLException("Không tìm thấy hóa đơn " + maHD);
+        }
+
+        ArrayList<ChiTietHoaDon> dsChiTiet = chiTietHoaDonDAO.getChiTietHoaDonTheoMaHD(maHD);
+        if (dsChiTiet.isEmpty()) {
+            throw new SQLException("Hóa đơn " + maHD + " không có chi tiết sản phẩm");
+        }
+
+        NhanVien nhanVien = hoaDon.getNhanVien() != null
+                ? nhanVienDAO.getNhanVienTheoMa(hoaDon.getNhanVien().getMaNV())
+                : null;
+        KhachHang khachHang = hoaDon.getKhachHang() != null && hoaDon.getKhachHang().getMaKH() != null
+                ? khachHangDAO.getKhachHangTheoMa(hoaDon.getKhachHang().getMaKH())
+                : null;
+        Thue thue = hoaDon.getThue() != null && hoaDon.getThue().getMaThue() != null
+                ? thueDAO.getThueTheoMa(hoaDon.getThue().getMaThue())
+                : null;
+        KhuyenMai khuyenMai = hoaDon.getKhuyenMai() != null && hoaDon.getKhuyenMai().getMaKM() != null
+                ? khuyenMaiDAO.getKhuyenMaiTheoMa(hoaDon.getKhuyenMai().getMaKM())
+                : null;
+
+        String folderPath = "src/LuuHoaDonInRa";
+        File folder = new File(folderPath);
+        if (!folder.exists()) {
+            folder.mkdirs();
+        }
+
+        String fileName = "HoaDon_" + maHD + "_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".pdf";
+        String outputPath = folderPath + File.separator + fileName;
+
+        com.itextpdf.text.Document document = new com.itextpdf.text.Document(PageSize.A4, 40, 40, 40, 40);
+        PdfWriter.getInstance(document, new FileOutputStream(outputPath));
+        document.open();
+
+        BaseFont bf = BaseFont.createFont("C:/Windows/Fonts/arial.ttf", BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
+        com.itextpdf.text.Font fontStoreName = new com.itextpdf.text.Font(bf, 20, com.itextpdf.text.Font.BOLD);
+        com.itextpdf.text.Font fontTitle = new com.itextpdf.text.Font(bf, 18, com.itextpdf.text.Font.BOLD);
+        com.itextpdf.text.Font fontNormal = new com.itextpdf.text.Font(bf, 12);
+        com.itextpdf.text.Font fontBold = new com.itextpdf.text.Font(bf, 12, com.itextpdf.text.Font.BOLD);
+
+        Paragraph storeName = new Paragraph("NHÀ THUỐC MAI THỨC", fontStoreName);
+        storeName.setAlignment(Element.ALIGN_CENTER);
+        document.add(storeName);
+
+        Paragraph title = new Paragraph("HÓA ĐƠN BÁN HÀNG", fontTitle);
+        title.setAlignment(Element.ALIGN_CENTER);
+        document.add(title);
+        document.add(new Paragraph(" "));
+
+        String tenNhanVien = nhanVien != null ? dinhDangTenNhanVien(nhanVien.getTenNV()) : safeText(getMaNhanVien(hoaDon));
+        String tenKhachHang = khachHang != null ? khachHang.getHoTen() : "Khách lẻ";
+        String soDienThoai = khachHang != null ? safeText(khachHang.getSoDienThoai()) : "";
+
+        document.add(new Paragraph("Mã hóa đơn: " + hoaDon.getMaHD(), fontNormal));
+        document.add(new Paragraph("Ngày lập: " + (hoaDon.getNgayLap() != null ? sdf.format(hoaDon.getNgayLap()) : ""), fontNormal));
+        document.add(new Paragraph("Nhân viên: " + tenNhanVien, fontNormal));
+        document.add(new Paragraph("Khách hàng: " + tenKhachHang, fontNormal));
+        document.add(new Paragraph("Số điện thoại: " + soDienThoai, fontNormal));
+        document.add(new Paragraph(" "));
+
+        PdfPTable tablePdf = new PdfPTable(5);
+        tablePdf.setWidthPercentage(100);
+        tablePdf.setWidths(new float[] { 1f, 3f, 1.5f, 1.5f, 2f });
+
+        String[] headers = { "STT", "Tên thuốc", "Số lượng", "Đơn giá", "Thành tiền" };
+        for (String header : headers) {
+            PdfPCell cell = new PdfPCell(new Phrase(header, fontBold));
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setBackgroundColor(BaseColor.LIGHT_GRAY);
+            tablePdf.addCell(cell);
+        }
+
+        double tamTinh = 0;
+        int stt = 1;
+        for (ChiTietHoaDon cthd : dsChiTiet) {
+            Thuoc thuoc = cthd.getThuoc() != null ? thuocDAO.getThuocTheoMaThuoc(cthd.getThuoc().getMaThuoc()) : null;
+            String tenThuoc = thuoc != null ? thuoc.getTenThuoc() : safeText(getMaThuoc(cthd));
+            double thanhTien = cthd.getSoLuong() * cthd.getDonGia();
+            tamTinh += thanhTien;
+
+            addCell(tablePdf, String.valueOf(stt++), fontNormal, Element.ALIGN_CENTER);
+            addCell(tablePdf, tenThuoc, fontNormal, Element.ALIGN_LEFT);
+            addCell(tablePdf, String.valueOf(cthd.getSoLuong()), fontNormal, Element.ALIGN_CENTER);
+            addCell(tablePdf, formatMoney(cthd.getDonGia()), fontNormal, Element.ALIGN_RIGHT);
+            addCell(tablePdf, formatMoney(thanhTien), fontNormal, Element.ALIGN_RIGHT);
+        }
+
+        document.add(tablePdf);
+        document.add(new Paragraph(" "));
+
+        double tienGiamGia = khuyenMai != null ? tamTinh * khuyenMai.getPhanTramGiamGia() / 100 : 0;
+        double tienSauGiamGia = tamTinh - tienGiamGia;
+        double tienThue = thue != null ? tienSauGiamGia * thue.getPhanTramThue() / 100 : 0;
+        double thanhToan = tienSauGiamGia + tienThue;
+
+        document.add(new Paragraph("Tổng tiền: " + formatMoney(tamTinh), fontNormal));
+        document.add(new Paragraph("Thuế: " + (thue != null ? String.format("%.0f%% (+%s)", thue.getPhanTramThue(), formatMoney(tienThue)) : formatMoney(0)), fontNormal));
+        document.add(new Paragraph("Giảm giá: " + (khuyenMai != null ? String.format("%.0f%% (-%s)", khuyenMai.getPhanTramGiamGia(), formatMoney(tienGiamGia)) : formatMoney(0)), fontNormal));
+        document.add(new Paragraph("Thành tiền: " + formatMoney(thanhToan), fontBold));
+        document.add(new Paragraph(" "));
+        document.add(new Paragraph("Cảm ơn quý khách đã mua hàng!", fontBold));
+        document.close();
+
+        return outputPath;
+    }
+
+    private void addCell(PdfPTable tablePdf, String text, com.itextpdf.text.Font font, int alignment) {
+        PdfPCell cell = new PdfPCell(new Phrase(text, font));
+        cell.setHorizontalAlignment(alignment);
+        tablePdf.addCell(cell);
+    }
+
+    private String formatMoney(double amount) {
+        return String.format("%,.0f VNĐ", amount);
+    }
+
+    private String safeText(String text) {
+        return text == null ? "" : text;
+    }
+
+    private String getMaNhanVien(HoaDon hoaDon) {
+        return hoaDon.getNhanVien() != null ? hoaDon.getNhanVien().getMaNV() : "";
+    }
+
+    private String getMaThuoc(ChiTietHoaDon chiTiet) {
+        return chiTiet.getThuoc() != null ? chiTiet.getThuoc().getMaThuoc() : "";
+    }
+
+    private String dinhDangTenNhanVien(String tenNhanVien) {
+        if (tenNhanVien == null || tenNhanVien.trim().isEmpty()) {
+            return "N/A";
+        }
+        return tenNhanVien.replaceAll("\\s*\\(NV\\d+\\)\\s*$", "").trim();
     }
     
     private void hienThiTatCaHoaDon() {

@@ -1,4 +1,4 @@
-﻿package gui.dialog;
+package gui.dialog;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -29,15 +29,15 @@ import com.toedter.calendar.JDateChooser;
 import dao.DanhMucThuocDAO;
 import entity.DanhMucThuoc;
 import entity.KhuyenMai;
-import gui.form.formDanhMucThuoc;
+import gui.form.FormDanhMucThuoc;
 
 public class DialogCapNhatDanhMucThuoc extends JDialog {
-	private formDanhMucThuoc parentForm;
+	private FormDanhMucThuoc parentForm;
 	private DanhMucThuoc dmt;
 	private DanhMucThuocDAO dmtDAO;
 	private JTextField txtMaDanhMuc;
 	private JTextField txtTenDanhMuc;
-	public DialogCapNhatDanhMucThuoc(Frame parent, formDanhMucThuoc formDanhMucThuoc, DanhMucThuoc dmt) {
+	public DialogCapNhatDanhMucThuoc(Frame parent, FormDanhMucThuoc formDanhMucThuoc, DanhMucThuoc dmt) {
 		super(parent,"CẬP NHẬT DANH MỤC THUỐC", true);
 		this.parentForm = formDanhMucThuoc;
 		this.dmt = dmt;

@@ -1,4 +1,4 @@
-﻿package gui.form;
+package gui.form;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -30,11 +30,12 @@ import javax.swing.table.DefaultTableModel;
 import com.formdev.flatlaf.extras.FlatSVGIcon; // Import thư viện icon
 import dao.KhuyenMaiDAO;
 import entity.KhuyenMai;
+import entity.TaiKhoan;
 import gui.dialog.DialogCapNhatKhuyenMai;
 import gui.dialog.DialogThemKhuyenMai;
 import gui.dialog.DialogThongTinKhuyenMai;
 
-public class formKhuyenMai extends JPanel implements ActionListener {
+public class FormKhuyenMai extends JPanel implements ActionListener {
     private JPanel actionPanel;
     private JButton btnAdd;
     private JButton btnDelete;
@@ -53,9 +54,15 @@ public class formKhuyenMai extends JPanel implements ActionListener {
     private JTextField txtSearch;
     private DefaultTableModel tableModel;
     private KhuyenMaiDAO kmDAO;
+    private boolean choPhepSuaXoa = true;
     private final Font headerTable = new Font("Roboto", Font.BOLD, 18);
     
-    public formKhuyenMai() {
+    public FormKhuyenMai() {
+        this(null);
+    }
+
+    public FormKhuyenMai(TaiKhoan taiKhoan) {
+        choPhepSuaXoa = coQuyenQuanLy(taiKhoan);
         kmDAO = new KhuyenMaiDAO();
     	taoNoiDung();
         loadDataTable();
@@ -94,7 +101,9 @@ public class formKhuyenMai extends JPanel implements ActionListener {
         btnAdd.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnAdd.setPreferredSize(new Dimension(90, 90));
         btnAdd.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        actionPanel.add(btnAdd);
+        if (choPhepSuaXoa) {
+            actionPanel.add(btnAdd);
+        }
 
         // Nút SỬA
         btnUpdate = new JButton("SỬA");
@@ -108,7 +117,9 @@ public class formKhuyenMai extends JPanel implements ActionListener {
         btnUpdate.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnUpdate.setPreferredSize(new Dimension(90, 90));
         btnUpdate.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        actionPanel.add(btnUpdate);
+        if (choPhepSuaXoa) {
+            actionPanel.add(btnUpdate);
+        }
 
         // Nút XÓA
         btnDelete = new JButton("XÓA");
@@ -122,10 +133,12 @@ public class formKhuyenMai extends JPanel implements ActionListener {
         btnDelete.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnDelete.setPreferredSize(new Dimension(90, 90));
         btnDelete.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        actionPanel.add(btnDelete);
+        if (choPhepSuaXoa) {
+            actionPanel.add(btnDelete);
+        }
 
-        // Nút INFO
-        btnInfo = new JButton("INFO");
+        // Nút chi tiết
+        btnInfo = new JButton("CHI TIẾT");
         btnInfo.setFont(new Font("Roboto", Font.BOLD, 14));
         btnInfo.setIcon(new FlatSVGIcon(getClass().getResource("/img/info.svg")));
         btnInfo.setBorder(null);
@@ -166,7 +179,12 @@ public class formKhuyenMai extends JPanel implements ActionListener {
         jPanel1.add(jPanel3);
         
         String[] tableTitle = {"Mã khuyến mãi", "Tên khuyến mãi", "Ngày bắt đầu", "Ngày kết thúc", "Phần trăm giảm giá"};
-        tableModel = new DefaultTableModel(tableTitle, 0);
+        tableModel = new DefaultTableModel(tableTitle, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
         
         table = new JTable(tableModel); 
         table.getTableHeader().setFont(headerTable);
@@ -236,6 +254,10 @@ public class formKhuyenMai extends JPanel implements ActionListener {
     public void actionPerformed(ActionEvent e) {
         Object o = e.getSource();
         if (o.equals(btnAdd)) {
+            if (!choPhepSuaXoa) {
+                thongBaoKhongCoQuyen();
+                return;
+            }
             new DialogThemKhuyenMai((Frame) SwingUtilities.getWindowAncestor(this), this).setVisible(true);
         } else if (o.equals(btnReload)) {
             txtSearch.setText("");
@@ -250,6 +272,10 @@ public class formKhuyenMai extends JPanel implements ActionListener {
     }
 
     private void xoaKhuyenMai() {
+        if (!choPhepSuaXoa) {
+            thongBaoKhongCoQuyen();
+            return;
+        }
         int selectedRow = table.getSelectedRow();
         if (selectedRow == -1) {
             JOptionPane.showMessageDialog(this, "Vui lòng chọn khuyến mãi cần xóa!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
@@ -272,6 +298,10 @@ public class formKhuyenMai extends JPanel implements ActionListener {
     }
 
     private void capNhatKhuyenMai() {
+        if (!choPhepSuaXoa) {
+            thongBaoKhongCoQuyen();
+            return;
+        }
         int selectedRow = table.getSelectedRow();
         if (selectedRow == -1) {
             JOptionPane.showMessageDialog(this, "Vui lòng chọn khuyến mãi cần cập nhật!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
@@ -303,5 +333,16 @@ public class formKhuyenMai extends JPanel implements ActionListener {
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(this, "Lỗi khi tải dữ liệu: " + e.getMessage(), "Lỗi SQL", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    private boolean coQuyenQuanLy(TaiKhoan taiKhoan) {
+        return taiKhoan == null || "Nhân viên quản lý".equals(taiKhoan.getVaiTro());
+    }
+
+    private void thongBaoKhongCoQuyen() {
+        JOptionPane.showMessageDialog(this,
+                "Nhân viên không được phép thực hiện chức năng này",
+                "Không có quyền",
+                JOptionPane.WARNING_MESSAGE);
     }
 }

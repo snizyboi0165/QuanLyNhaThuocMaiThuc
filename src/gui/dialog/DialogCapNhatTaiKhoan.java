@@ -1,4 +1,4 @@
-﻿package gui.dialog;
+package gui.dialog;
 
 import java.awt.*;
 import javax.swing.*;
@@ -8,7 +8,7 @@ import javax.swing.border.LineBorder;
 import dao.TaiKhoanDAO;
 import dao.NhanVienDAO;
 import entity.TaiKhoan;
-import gui.form.formQuanLyTK;
+import gui.form.FormQuanLyTK;
 import entity.NhanVien;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -26,11 +26,11 @@ public class DialogCapNhatTaiKhoan extends JDialog {
     
     private TaiKhoanDAO tkDAO;
     private NhanVienDAO nvDAO;
-    private formQuanLyTK parentForm;
+    private FormQuanLyTK parentForm;
     private TaiKhoan taiKhoan;
     private ArrayList<NhanVien> dsNhanVien;
     
-    public DialogCapNhatTaiKhoan(Frame parent, formQuanLyTK form, TaiKhoan tk) {
+    public DialogCapNhatTaiKhoan(Frame parent, FormQuanLyTK form, TaiKhoan tk) {
         super(parent, "Cập nhật thông tin tài khoản", true);
         this.parentForm = form;
         this.taiKhoan = tk;
@@ -309,7 +309,7 @@ public class DialogCapNhatTaiKhoan extends JDialog {
         // Nếu có nhập mật khẩu mới, phải validate
         if (!matKhau.isEmpty()) {
             // Kiểm tra định dạng mật khẩu
-            if (!matKhau.matches(TaiKhoan.REGEX_MAT_KHAU)) {
+            if (!TaiKhoan.isValidPasswordFormat(matKhau)) {
                 JOptionPane.showMessageDialog(this, 
                     "Mật khẩu phải trên 6 ký tự bao gồm: chữ cái, số, ký tự đặc biệt!", 
                     "Cảnh báo", 

@@ -1,4 +1,4 @@
-﻿package gui.dialog;
+package gui.dialog;
 
 import java.awt.*;
 import java.sql.SQLException;
@@ -14,7 +14,7 @@ import dao.NhanVienDAO;
 import dao.TaiKhoanDAO;
 import entity.NhanVien;
 import entity.TaiKhoan;
-import gui.form.formQuanLyTK;
+import gui.form.FormQuanLyTK;
 
 public class DialogThemTaiKhoan extends JDialog {
     private JTextField txtTenDangNhap;
@@ -28,10 +28,10 @@ public class DialogThemTaiKhoan extends JDialog {
     
     private NhanVienDAO nvDao;
     private TaiKhoanDAO tkDAO;
-    private formQuanLyTK parentForm;
+    private FormQuanLyTK parentForm;
 //    public static final String REGEX_MAT_KHAU = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[@$!%*#?&])[A-Za-z\\d@$!%*#?&]{6,}$";
 
-    public DialogThemTaiKhoan(Frame parent, formQuanLyTK form) throws SQLException {
+    public DialogThemTaiKhoan(Frame parent, FormQuanLyTK form) throws SQLException {
         super(parent, "Thêm tài khoản mới", true);
         this.parentForm = form;
         this.tkDAO = new TaiKhoanDAO();
@@ -271,6 +271,14 @@ public class DialogThemTaiKhoan extends JDialog {
             JOptionPane.showMessageDialog(this, 
                 "Mật khẩu phải trên 6 ký tự bao gồm: chữ cái, số, ký tự đặc biệt", 
                 "Cảnh báo", 
+                JOptionPane.WARNING_MESSAGE);
+            txtMatKhau.requestFocus();
+            return false;
+        }
+        if (!TaiKhoan.isValidPasswordFormat(matKhau)) {
+            JOptionPane.showMessageDialog(this,
+                "Mật khẩu phải trên 6 ký tự bao gồm: chữ cái, số, ký tự đặc biệt",
+                "Cảnh báo",
                 JOptionPane.WARNING_MESSAGE);
             txtMatKhau.requestFocus();
             return false;

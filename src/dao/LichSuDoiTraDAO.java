@@ -4,7 +4,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-import ConnectDB.DatabaseConnection;
+import connectdb.DatabaseConnection;
 
 public class LichSuDoiTraDAO {
     
@@ -283,7 +283,6 @@ public class LichSuDoiTraDAO {
         try (Connection con = getSafeConnection()) {
             PreparedStatement stmt = con.prepareStatement(createTableSQL);
             stmt.executeUpdate();
-            System.out.println("Đã tạo bảng LichSuDoiTra thành công");
         }
     }
     

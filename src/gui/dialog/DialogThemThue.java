@@ -1,19 +1,19 @@
-﻿package gui.dialog;
+package gui.dialog;
 
 import java.awt.*;
 import javax.swing.*;
 import javax.swing.border.*;
 import dao.ThueDAO;
 import entity.Thue;
-import gui.form.formThue;
+import gui.form.FormThue;
 
 public class DialogThemThue extends JDialog {
     private JTextField txtTenThue;
     private JSpinner spinnerPhanTram;
     private ThueDAO thueDAO;
-    private formThue parentForm;
+    private FormThue parentForm;
 
-    public DialogThemThue(Frame parent, formThue form) {
+    public DialogThemThue(Frame parent, FormThue form) {
         super(parent, "Thêm Mức Thuế Mới", true);
         this.parentForm = form;
         this.thueDAO = new ThueDAO();

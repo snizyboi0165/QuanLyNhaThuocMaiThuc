@@ -1,4 +1,4 @@
-﻿package gui.dialog;
+package gui.dialog;
 
 import entity.Thuoc;
 import java.awt.*;

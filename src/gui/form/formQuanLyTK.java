@@ -1,4 +1,4 @@
-﻿package gui.form;
+package gui.form;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -38,7 +38,7 @@ import gui.dialog.DialogCapNhatTaiKhoan;
 import gui.dialog.DialogThemTaiKhoan;
 import gui.dialog.DialogThongTinTaiKhoan;
 
-public class formQuanLyTK extends JPanel implements ActionListener {
+public class FormQuanLyTK extends JPanel implements ActionListener {
     private JPanel actionPanel;
     private JButton btnAdd;
     private JButton btnDelete;
@@ -59,7 +59,7 @@ public class formQuanLyTK extends JPanel implements ActionListener {
     private TaiKhoanDAO tkDao;
     Font headerTable = new Font("Roboto", Font.BOLD, 18);
     
-    public formQuanLyTK() {
+    public FormQuanLyTK() {
     	taoNoiDung();
     }
 
@@ -188,7 +188,7 @@ public class formQuanLyTK extends JPanel implements ActionListener {
 
         btnInfo.setFont(new Font("Roboto", Font.BOLD, 14));
         btnInfo.setIcon(new FlatSVGIcon(getClass().getResource("/img/info.svg")));
-        btnInfo.setText("INFO");
+        btnInfo.setText("CHI TIẾT");
         btnInfo.setBorder(null);
         btnInfo.setBorderPainted(false);
         btnInfo.setContentAreaFilled(false);
@@ -206,7 +206,12 @@ public class formQuanLyTK extends JPanel implements ActionListener {
         tablePanel.setLayout(new BorderLayout());
         
         String[] tableTitle = {"Tên đăng nhập", "Mật khẩu", "Trạng thái", "Mã nhân viên", "Vai trò"};
-        tableModel = new DefaultTableModel(tableTitle, 0);
+        tableModel = new DefaultTableModel(tableTitle, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
         table.getTableHeader().setFont(headerTable);
         table.setModel(tableModel);
 

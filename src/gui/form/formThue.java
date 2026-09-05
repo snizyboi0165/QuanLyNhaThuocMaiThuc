@@ -1,4 +1,4 @@
-﻿package gui.form;
+package gui.form;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -32,12 +32,13 @@ import javax.swing.table.DefaultTableModel;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 
 import dao.ThueDAO;
+import entity.TaiKhoan;
 import entity.Thue;
 import gui.dialog.DialogThongTinThue;
 import gui.dialog.DialogCapNhatThue;
 import gui.dialog.DialogThemThue;
 
-public class formThue extends JPanel implements ActionListener {
+public class FormThue extends JPanel implements ActionListener {
     private JPanel actionPanel;
     private JButton btnAdd;
     private JButton btnDelete;
@@ -56,8 +57,14 @@ public class formThue extends JPanel implements ActionListener {
     private JTextField txtSearch;
     private DefaultTableModel tableModel;
     private ThueDAO thueDAO;
+    private boolean choPhepThemSuaXoa = true;
     Font headerTable = new Font("Roboto", Font.BOLD, 18);
-    public formThue() {
+    public FormThue() {
+    	this(null);
+    }
+
+    public FormThue(TaiKhoan taiKhoan) {
+        choPhepThemSuaXoa = coQuyenQuanLy(taiKhoan);
     	taoNoiDung();
         thueDAO = new ThueDAO();
         loadDataTable();
@@ -144,7 +151,9 @@ public class formThue extends JPanel implements ActionListener {
         btnAdd.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnAdd.setPreferredSize(new Dimension(90, 90));
         btnAdd.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        actionPanel.add(btnAdd);
+        if (choPhepThemSuaXoa) {
+            actionPanel.add(btnAdd);
+        }
 
         btnUpdate.setFont(new Font("Roboto", Font.BOLD, 14));
         btnUpdate.setIcon(new FlatSVGIcon(getClass().getResource("/img/update.svg")));
@@ -157,7 +166,9 @@ public class formThue extends JPanel implements ActionListener {
         btnUpdate.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnUpdate.setPreferredSize(new Dimension(90, 90));
         btnUpdate.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        actionPanel.add(btnUpdate);
+        if (choPhepThemSuaXoa) {
+            actionPanel.add(btnUpdate);
+        }
 
         btnDelete.setFont(new Font("Roboto", Font.BOLD, 14));
         btnDelete.setIcon(new FlatSVGIcon(getClass().getResource("/img/delete.svg")));
@@ -170,11 +181,13 @@ public class formThue extends JPanel implements ActionListener {
         btnDelete.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnDelete.setPreferredSize(new Dimension(90, 90));
         btnDelete.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        actionPanel.add(btnDelete);
+        if (choPhepThemSuaXoa) {
+            actionPanel.add(btnDelete);
+        }
 
         btnInfo.setFont(new Font("Roboto", Font.BOLD, 14));
         btnInfo.setIcon(new FlatSVGIcon(getClass().getResource("/img/info.svg")));
-        btnInfo.setText("INFO");
+        btnInfo.setText("CHI TIẾT");
         btnInfo.setBorder(null);
         btnInfo.setBorderPainted(false);
         btnInfo.setContentAreaFilled(false);
@@ -193,7 +206,12 @@ public class formThue extends JPanel implements ActionListener {
         tablePanel.setLayout(new BorderLayout());
         
         String[] tableTitle = {"Mã thuế", "Tên thuế", "Phần trăm thuế"};
-        tableModel = new DefaultTableModel(tableTitle, 0);
+        tableModel = new DefaultTableModel(tableTitle, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
         table.getTableHeader().setFont(headerTable);
         table.setModel(tableModel);
 
@@ -271,6 +289,10 @@ public class formThue extends JPanel implements ActionListener {
     public void actionPerformed(ActionEvent e) {
         Object o = e.getSource();
         if (o.equals(btnAdd)) {
+            if (!choPhepThemSuaXoa) {
+                thongBaoKhongCoQuyen();
+                return;
+            }
             new DialogThemThue((Frame) SwingUtilities.getWindowAncestor(this), this).setVisible(true);
         } else if (o.equals(btnUpdate)) {
             capNhatThue();
@@ -285,6 +307,10 @@ public class formThue extends JPanel implements ActionListener {
     }
     
     private void capNhatThue() {
+        if (!choPhepThemSuaXoa) {
+            thongBaoKhongCoQuyen();
+            return;
+        }
         int row = table.getSelectedRow();
         if (row == -1) {
             JOptionPane.showMessageDialog(this, "Vui lòng chọn mức thuế cần cập nhật!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
@@ -302,6 +328,10 @@ public class formThue extends JPanel implements ActionListener {
     }
 
     private void xoaThue() {
+        if (!choPhepThemSuaXoa) {
+            thongBaoKhongCoQuyen();
+            return;
+        }
         int row = table.getSelectedRow();
         if (row == -1) {
             JOptionPane.showMessageDialog(this, "Vui lòng chọn mức thuế cần xóa!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
@@ -360,5 +390,16 @@ public class formThue extends JPanel implements ActionListener {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+    }
+
+    private boolean coQuyenQuanLy(TaiKhoan taiKhoan) {
+        return taiKhoan == null || "Nhân viên quản lý".equals(taiKhoan.getVaiTro());
+    }
+
+    private void thongBaoKhongCoQuyen() {
+        JOptionPane.showMessageDialog(this,
+                "Nhân viên không được phép thực hiện chức năng này",
+                "Không có quyền",
+                JOptionPane.WARNING_MESSAGE);
     }
 }

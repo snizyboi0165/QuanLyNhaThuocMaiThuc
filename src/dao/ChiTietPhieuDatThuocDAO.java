@@ -6,7 +6,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
-import ConnectDB.DatabaseConnection;
+import connectdb.DatabaseConnection;
 import entity.ChiTietHoaDon;
 import entity.ChiTietPhieuDatThuoc;
 import entity.PhieuDatThuoc;

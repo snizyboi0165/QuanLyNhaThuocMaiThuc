@@ -35,12 +35,13 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
 
 import dao.DanhMucThuocDAO;
 import dao.ThuocDAO;
+import entity.TaiKhoan;
 import entity.Thuoc;
 import gui.dialog.DialogThemThuoc;
 import gui.dialog.DialogThongTinChiTietThuoc;
 import gui.dialog.DialogSuaThuoc;
 
-public class formQuanLyThuoc extends JPanel {
+public class FormQuanLyThuoc extends JPanel {
     private JPanel actionPanel;
     private JButton btnAdd;
     private JButton btnDelete;
@@ -62,9 +63,15 @@ public class formQuanLyThuoc extends JPanel {
     private DanhMucThuocDAO dmtDAO;
     private ArrayList<Thuoc> dsThuoc;
     private final Map<String, Date> hanSuDungTheoMaThuoc = new HashMap<>();
+    private boolean choPhepSuaXoa = true;
     Font headerTable = new Font("Roboto", Font.BOLD, 18);
     
-    public formQuanLyThuoc() {
+    public FormQuanLyThuoc() {
+        this(null);
+    }
+
+    public FormQuanLyThuoc(TaiKhoan taiKhoan) {
+        choPhepSuaXoa = coQuyenQuanLy(taiKhoan);
         taoNoiDung();
         addEvents();
     }
@@ -151,7 +158,9 @@ public class formQuanLyThuoc extends JPanel {
         btnAdd.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnAdd.setPreferredSize(new Dimension(90, 90));
         btnAdd.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        actionPanel.add(btnAdd);
+        if (choPhepSuaXoa) {
+            actionPanel.add(btnAdd);
+        }
 
         btnUpdate.setFont(new Font("Roboto", Font.BOLD, 14));
         btnUpdate.setIcon(new FlatSVGIcon(getClass().getResource("/img/update.svg")));
@@ -164,7 +173,9 @@ public class formQuanLyThuoc extends JPanel {
         btnUpdate.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnUpdate.setPreferredSize(new Dimension(90, 90));
         btnUpdate.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        actionPanel.add(btnUpdate);
+        if (choPhepSuaXoa) {
+            actionPanel.add(btnUpdate);
+        }
 
         btnDelete.setFont(new Font("Roboto", Font.BOLD, 14));
         btnDelete.setIcon(new FlatSVGIcon(getClass().getResource("/img/delete.svg")));
@@ -177,11 +188,13 @@ public class formQuanLyThuoc extends JPanel {
         btnDelete.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         btnDelete.setPreferredSize(new Dimension(90, 90));
         btnDelete.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        actionPanel.add(btnDelete);
+        if (choPhepSuaXoa) {
+            actionPanel.add(btnDelete);
+        }
 
         btnInfo.setFont(new Font("Roboto", Font.BOLD, 14));
         btnInfo.setIcon(new FlatSVGIcon(getClass().getResource("/img/info.svg")));
-        btnInfo.setText("INFO");
+        btnInfo.setText("CHI TIẾT");
         btnInfo.setBorder(null);
         btnInfo.setBorderPainted(false);
         btnInfo.setContentAreaFilled(false);
@@ -199,7 +212,7 @@ public class formQuanLyThuoc extends JPanel {
         tablePanel.setBorder(new LineBorder(new Color(230, 230, 230), 2, true));
         tablePanel.setLayout(new BorderLayout());
         
-        String[] tableTitle = {"Mã thuốc", "Tên thuốc", "Danh mục", "Xuất xứ","Đơn vị tính" ,"Giá bán", "Số lượng", "Ngày sản xuất", "Hạn sử dụng", "Mô tả", "Thành phần"};
+        String[] tableTitle = {"Mã thuốc", "Tên thuốc", "Danh mục", "Xuất xứ", "Đơn vị tính", "Giá bán", "Tổng tồn", "HSD gần nhất", "Mô tả", "Thành phần"};
         tableModel = new DefaultTableModel(tableTitle, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -219,10 +232,16 @@ public class formQuanLyThuoc extends JPanel {
                 String maThuoc = table.getValueAt(row, 0).toString();
                 Date hanSuDung = hanSuDungTheoMaThuoc.get(maThuoc);
                 boolean hetHan = hanSuDung != null && hanSuDung.before(Date.valueOf(LocalDate.now()));
+                boolean sapHetHan = hanSuDung != null && !hetHan 
+                        && hanSuDung.before(Date.valueOf(LocalDate.now().plusDays(30)));
                 if (isSelected) {
                     comp.setForeground(table.getSelectionForeground());
+                } else if (hetHan) {
+                    comp.setForeground(Color.RED);
+                } else if (sapHetHan) {
+                    comp.setForeground(new Color(255, 165, 0));
                 } else {
-                    comp.setForeground(hetHan ? Color.RED : Color.BLACK);
+                    comp.setForeground(Color.BLACK);
                 }
                 return comp;
             }
@@ -306,26 +325,11 @@ public class formQuanLyThuoc extends JPanel {
     
     private void loadDataTable() {
         try {
-        	SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
             tableModel.setRowCount(0);
             hanSuDungTheoMaThuoc.clear();
             dsThuoc = thuocDAO.getDsThuoc();
             for (Thuoc t : dsThuoc) {
-            	String tenDanhMuc = dmtDAO.getDanhMucThuocQuaMaDanhMuc(t.getDanhMucThuoc().getMaDanhMuc()).getTenDanhMuc();
-                hanSuDungTheoMaThuoc.put(t.getMaThuoc(), new Date(t.getHanSuDung().getTime()));
-                tableModel.addRow(new Object[] {
-                    t.getMaThuoc(),
-                    t.getTenThuoc(),
-                    tenDanhMuc,
-                    t.getXuatXu(),
-                    t.getDonViTinh(),
-                    String.format("%,.0f VNĐ", t.getGiaBan()),
-                    t.getSoLuongTon(),
-                    sdf.format(t.getNgaySanXuat()),
-                    sdf.format(t.getHanSuDung()),
-                    t.getMoTa(),
-                    t.getThanhPhan()
-                });
+                themDongThuoc(t);
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -337,6 +341,10 @@ public class formQuanLyThuoc extends JPanel {
     }
     
     private void themThuoc() {
+        if (!choPhepSuaXoa) {
+            thongBaoKhongCoQuyen();
+            return;
+        }
         DialogThemThuoc dialog = new DialogThemThuoc(
             (javax.swing.JFrame) SwingUtilities.getWindowAncestor(this)
         );
@@ -348,6 +356,10 @@ public class formQuanLyThuoc extends JPanel {
     }
     
     private void suaThuoc() {
+        if (!choPhepSuaXoa) {
+            thongBaoKhongCoQuyen();
+            return;
+        }
         int selectedRow = table.getSelectedRow();
         if (selectedRow == -1) {
             JOptionPane.showMessageDialog(this, 
@@ -382,6 +394,10 @@ public class formQuanLyThuoc extends JPanel {
     }
     
     private void xoaThuoc() {
+        if (!choPhepSuaXoa) {
+            thongBaoKhongCoQuyen();
+            return;
+        }
         int selectedRow = table.getSelectedRow();
         if (selectedRow == -1) {
             JOptionPane.showMessageDialog(this, 
@@ -463,39 +479,73 @@ private void xemThongTin() {
             
             switch (searchType) {
                 case "Tất cả":
-                    match = t.getMaThuoc().toLowerCase().contains(keyword) ||
-                            t.getTenThuoc().toLowerCase().contains(keyword) ||
-                            t.getDanhMucThuoc().getTenDanhMuc().toLowerCase().contains(keyword) ||
-                            t.getXuatXu().toLowerCase().contains(keyword);
+                    match = safeLower(t.getMaThuoc()).contains(keyword) ||
+                            safeLower(t.getTenThuoc()).contains(keyword) ||
+                            safeLower(layTenDanhMuc(t)).contains(keyword) ||
+                            safeLower(t.getXuatXu()).contains(keyword);
                     break;
                 case "Mã thuốc":
-                    match = t.getMaThuoc().toLowerCase().contains(keyword);
+                    match = safeLower(t.getMaThuoc()).contains(keyword);
                     break;
                 case "Tên thuốc":
-                    match = t.getTenThuoc().toLowerCase().contains(keyword);
+                    match = safeLower(t.getTenThuoc()).contains(keyword);
                     break;
                 case "Danh mục":
-                    match = t.getDanhMucThuoc().getTenDanhMuc().toLowerCase().contains(keyword);
+                    match = safeLower(layTenDanhMuc(t)).contains(keyword);
                     break;
                 case "Xuất xứ":
-                    match = t.getXuatXu().toLowerCase().contains(keyword);
+                    match = safeLower(t.getXuatXu()).contains(keyword);
                     break;
             }
             
             if (match) {
-                tableModel.addRow(new Object[] {
-                    t.getMaThuoc(),
-                    t.getTenThuoc(),
-                    t.getDanhMucThuoc().getTenDanhMuc(),
-                    t.getXuatXu(),
-                    String.format("%,.0f VNĐ", t.getGiaBan()),
-                    t.getSoLuongTon(),
-                    t.getNgaySanXuat(),
-                    t.getHanSuDung(),
-                    t.getMoTa(),
-                    t.getThanhPhan()
-                });
+                themDongThuoc(t);
             }
         }
+    }
+
+    private void themDongThuoc(Thuoc t) {
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+        if (t.getHanSuDung() != null) {
+            hanSuDungTheoMaThuoc.put(t.getMaThuoc(), new Date(t.getHanSuDung().getTime()));
+        }
+        tableModel.addRow(new Object[] {
+            t.getMaThuoc(),
+            t.getTenThuoc(),
+            layTenDanhMuc(t),
+            t.getXuatXu(),
+            t.getDonViTinh(),
+            String.format("%,.0f VNĐ", t.getGiaBan()),
+            t.getSoLuongTon(),
+            t.getHanSuDung() == null ? "" : sdf.format(t.getHanSuDung()),
+            t.getMoTa(),
+            t.getThanhPhan()
+        });
+    }
+
+    private String layTenDanhMuc(Thuoc t) {
+        if (t.getDanhMucThuoc() == null || t.getDanhMucThuoc().getMaDanhMuc() == null) {
+            return "";
+        }
+        try {
+            return dmtDAO.getDanhMucThuocQuaMaDanhMuc(t.getDanhMucThuoc().getMaDanhMuc()).getTenDanhMuc();
+        } catch (SQLException e) {
+            return t.getDanhMucThuoc().getTenDanhMuc() == null ? "" : t.getDanhMucThuoc().getTenDanhMuc();
+        }
+    }
+
+    private String safeLower(String value) {
+        return value == null ? "" : value.toLowerCase();
+    }
+
+    private boolean coQuyenQuanLy(TaiKhoan taiKhoan) {
+        return taiKhoan == null || "Nhân viên quản lý".equals(taiKhoan.getVaiTro());
+    }
+
+    private void thongBaoKhongCoQuyen() {
+        JOptionPane.showMessageDialog(this,
+                "Nhân viên không được phép thực hiện chức năng này",
+                "Không có quyền",
+                JOptionPane.WARNING_MESSAGE);
     }
 }

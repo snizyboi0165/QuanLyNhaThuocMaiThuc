@@ -1,4 +1,4 @@
-﻿package gui.dialog;
+package gui.dialog;
 
 import java.awt.*;
 import javax.swing.*;
@@ -13,7 +13,6 @@ public class DialogCapNhatNhaCungCap extends JDialog {
     private JTextField txtMaNCC;
     private JTextField txtTenNCC;
     private JTextField txtSoDienThoai;
-    private JTextField txtCongNo;
     private JButton btnCapNhat;
     private JButton btnHuy;
 
@@ -78,13 +77,6 @@ public class DialogCapNhatNhaCungCap extends JDialog {
         txtSoDienThoai = new JTextField(20);
         formPanel.add(txtSoDienThoai, gbc);
         
-        // Công nợ
-        gbc.gridx = 0; gbc.gridy = 3;
-        formPanel.add(new JLabel("Công nợ:"), gbc);
-        gbc.gridx = 1;
-        txtCongNo = new JTextField(20);
-        formPanel.add(txtCongNo, gbc);
-
         add(formPanel, BorderLayout.CENTER);
 
         // Buttons
@@ -93,8 +85,13 @@ public class DialogCapNhatNhaCungCap extends JDialog {
         btnCapNhat = new JButton("CẬP NHẬT");
         btnHuy = new JButton("HỦY");
         btnCapNhat.setPreferredSize(new Dimension(140, 40));
+        btnCapNhat.setFont(new Font("Roboto", Font.BOLD, 14));
         btnCapNhat.setBackground(new Color(0, 0, 205));
+        btnCapNhat.setForeground(Color.WHITE);
+        btnCapNhat.setFocusPainted(false);
         btnHuy.setPreferredSize(new Dimension(140, 40));
+        btnHuy.setFont(new Font("Roboto", Font.BOLD, 14));
+        btnHuy.setFocusPainted(false);
         buttonPanel.add(btnCapNhat);
         buttonPanel.add(btnHuy);
         add(buttonPanel, BorderLayout.SOUTH);
@@ -108,29 +105,19 @@ public class DialogCapNhatNhaCungCap extends JDialog {
         txtMaNCC.setText(ncc.getMaNCC());
         txtTenNCC.setText(ncc.getTenNCC());
         txtSoDienThoai.setText(ncc.getSoDienThoai());
-        txtCongNo.setText(String.format("%.0f", ncc.getCongNo()));
     }
 
     private void xuLyCapNhatNCC() {
         String ten = txtTenNCC.getText().trim();
         String sdt = txtSoDienThoai.getText().trim();
-        String congNoStr = txtCongNo.getText().trim();
 
         if (ten.isEmpty() || sdt.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Tên và số điện thoại không được để trống!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        double congNo = 0;
         try {
-            congNo = Double.parseDouble(congNoStr);
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Công nợ phải là một con số!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        try {
-            NhaCungCap nccCapNhat = new NhaCungCap(txtMaNCC.getText(), ten, sdt, congNo);
+            NhaCungCap nccCapNhat = new NhaCungCap(txtMaNCC.getText(), ten, sdt);
 
             if (nccDAO.capNhatNhaCungCap(nccCapNhat)) {
                 JOptionPane.showMessageDialog(this, "Cập nhật thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);

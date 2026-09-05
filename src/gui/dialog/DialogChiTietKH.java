@@ -1,4 +1,4 @@
-﻿package gui.dialog;
+package gui.dialog;
 
 import entity.KhachHang;
 import java.awt.*;

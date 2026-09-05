@@ -9,6 +9,7 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.GridLayout;
 import java.awt.Image;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -21,6 +22,10 @@ import java.io.File;
 import java.net.URI;
 import java.net.URL;
 import java.sql.SQLException;
+import java.text.NumberFormat;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Locale;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -29,8 +34,11 @@ import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
@@ -39,8 +47,12 @@ import java.awt.RenderingHints;
 import com.kitfox.svg.SVGDiagram;
 import com.kitfox.svg.SVGUniverse;
 
+import dao.HoaDonDAO;
 import dao.NhanVienDAO;
+import dao.ThuocDAO;
 import entity.TaiKhoan;
+import entity.Thuoc;
+import utils.TableUtils;
 
 public class ManHinhChinh extends JFrame implements ActionListener{
 	private JButton btnHoaDon;
@@ -57,6 +69,8 @@ public class ManHinhChinh extends JFrame implements ActionListener{
 	private JPanel pnUserInfo;
 	private JPanel pnNorth;
 	private JPanel pnMenu;
+	private ThuocDAO thuocDAO;
+	private HoaDonDAO hoaDonDAO;
 	
 	// Biến lưu kích thước ban đầu
 	private int baseButtonWidth = 200;
@@ -66,7 +80,10 @@ public class ManHinhChinh extends JFrame implements ActionListener{
 	private int baseUserPanelHeight = 60;
 	
 	public ManHinhChinh(TaiKhoan tk) throws SQLException {
+		TableUtils.installGlobalTableLock();
 		nvDAO = new NhanVienDAO();
+		thuocDAO = new ThuocDAO();
+		hoaDonDAO = new HoaDonDAO();
 		taiKhoan = tk;
 		this.setTitle("Hiệu Thuốc Tây Mai Thức");
 		this.setSize(1280,1000);
@@ -124,6 +141,7 @@ public class ManHinhChinh extends JFrame implements ActionListener{
         
 
         adjustSizeBasedOnScreenSize();
+        hienThiTrangChu();
 	}
 	
 	private void initializeMenuButtons() {
@@ -154,7 +172,7 @@ public class ManHinhChinh extends JFrame implements ActionListener{
 			String[] chucNangNhanVien = {"Quản lý nhân viên","Tìm kiếm nhân viên", "Khuyến mãi", "Thuế", "Thống kê"};
 			themMenuItem(dropMenuNhanVien, chucNangNhanVien, this);
 		} else {
-			String[] chucNangNhanVien = {"Khuyến mãi", "Thuế", "Thống kê"};
+			String[] chucNangNhanVien = {"Khuyến mãi", "Thuế"};
 			themMenuItem(dropMenuNhanVien, chucNangNhanVien, this);
 		}
 		
@@ -582,6 +600,126 @@ public class ManHinhChinh extends JFrame implements ActionListener{
 		pnCenter.repaint(); 
 	}
 
+	private void hienThiTrangChu() {
+		pnCenter.removeAll();
+		pnCenter.add(taoPanelTrangChu(), BorderLayout.CENTER);
+		pnCenter.revalidate();
+		pnCenter.repaint();
+	}
+
+	private JPanel taoPanelTrangChu() {
+		JPanel wrapper = new JPanel(new BorderLayout(16, 16));
+		wrapper.setOpaque(false);
+		wrapper.setBorder(new EmptyBorder(24, 24, 24, 24));
+
+		JPanel topCards = new JPanel(new GridLayout(1, 3, 16, 0));
+		topCards.setOpaque(false);
+
+		try {
+			ArrayList<Thuoc> thuocSapHetHan = thuocDAO.getThuocSapHetHan(30, 5);
+			ArrayList<Thuoc> thuocSapHetHang = thuocDAO.getThuocSapHetHang(10, 5);
+			double doanhThuHomNay = hoaDonDAO.getDoanhThuHomNay();
+			NumberFormat tienVietNam = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
+
+			topCards.add(taoTheTongQuan("Thuốc sắp hết hạn", String.valueOf(thuocSapHetHan.size()),
+					"Trong 30 ngày tới"));
+			topCards.add(taoTheTongQuan("Thuốc sắp hết hàng", String.valueOf(thuocSapHetHang.size()),
+					"Tồn kho dưới hoặc bằng 10"));
+			topCards.add(taoTheTongQuan("Doanh thu hôm nay", tienVietNam.format(doanhThuHomNay),
+					new SimpleDateFormat("dd/MM/yyyy").format(new java.util.Date())));
+
+			JPanel content = new JPanel(new GridLayout(1, 2, 16, 0));
+			content.setOpaque(false);
+			content.add(taoPanelDanhSach("Thuốc sắp hết hạn", thuocSapHetHan, true));
+			content.add(taoPanelDanhSach("Thuốc sắp hết hàng", thuocSapHetHang, false));
+
+			wrapper.add(topCards, BorderLayout.NORTH);
+			wrapper.add(content, BorderLayout.CENTER);
+		} catch (SQLException e) {
+			JPanel errorPanel = new JPanel(new BorderLayout());
+			errorPanel.setBackground(new Color(255, 255, 255, 235));
+			errorPanel.setBorder(new LineBorder(new Color(220, 220, 220), 2, true));
+			JLabel lblError = new JLabel("Không thể tải dữ liệu trang chủ: " + e.getMessage());
+			lblError.setBorder(new EmptyBorder(20, 20, 20, 20));
+			errorPanel.add(lblError, BorderLayout.CENTER);
+			wrapper.add(errorPanel, BorderLayout.CENTER);
+		}
+
+		return wrapper;
+	}
+
+	private JPanel taoTheTongQuan(String tieuDe, String giaTri, String moTa) {
+		JPanel card = new JPanel(new BorderLayout(0, 8));
+		card.setBackground(new Color(255, 255, 255, 235));
+		card.setBorder(new EmptyBorder(20, 20, 20, 20));
+
+		JLabel lblTitle = new JLabel(tieuDe);
+		lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
+		lblTitle.setForeground(new Color(35, 55, 86));
+
+		JLabel lblValue = new JLabel(giaTri);
+		lblValue.setFont(new Font("Segoe UI", Font.BOLD, 26));
+		lblValue.setForeground(new Color(0, 102, 204));
+
+		JLabel lblDesc = new JLabel(moTa);
+		lblDesc.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+		lblDesc.setForeground(new Color(90, 90, 90));
+
+		card.add(lblTitle, BorderLayout.NORTH);
+		card.add(lblValue, BorderLayout.CENTER);
+		card.add(lblDesc, BorderLayout.SOUTH);
+		return card;
+	}
+
+	private JPanel taoPanelDanhSach(String tieuDe, ArrayList<Thuoc> dsThuoc, boolean hienHanSuDung) {
+		JPanel panel = new JPanel(new BorderLayout(0, 10));
+		panel.setBackground(new Color(255, 255, 255, 235));
+		panel.setBorder(new EmptyBorder(18, 18, 18, 18));
+		Color contentBackground = Color.WHITE;
+
+		JLabel lblTitle = new JLabel(tieuDe);
+		lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
+		lblTitle.setForeground(new Color(35, 55, 86));
+		panel.add(lblTitle, BorderLayout.NORTH);
+
+		JTextArea textArea = new JTextArea();
+		textArea.setEditable(false);
+		textArea.setFocusable(false);
+		textArea.setOpaque(true);
+		textArea.setBackground(contentBackground);
+		textArea.setLineWrap(true);
+		textArea.setWrapStyleWord(true);
+		textArea.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+		textArea.setBorder(new EmptyBorder(6, 6, 6, 6));
+
+		if (dsThuoc.isEmpty()) {
+			textArea.setText("Không có dữ liệu.");
+		} else {
+			StringBuilder builder = new StringBuilder();
+			SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+			for (Thuoc thuoc : dsThuoc) {
+				builder.append("- ").append(thuoc.getTenThuoc())
+						.append(" (").append(thuoc.getMaThuoc()).append(")");
+				if (hienHanSuDung && thuoc.getHanSuDung() != null) {
+					builder.append(" - HSD: ").append(sdf.format(thuoc.getHanSuDung()));
+				} else {
+					builder.append(" - Tồn: ").append(thuoc.getSoLuongTon());
+				}
+				builder.append("\n");
+			}
+			textArea.setText(builder.toString());
+		}
+
+		JScrollPane scrollPane = new JScrollPane(textArea);
+		scrollPane.setBorder(null);
+		scrollPane.setOpaque(true);
+		scrollPane.setBackground(contentBackground);
+		scrollPane.getViewport().setOpaque(true);
+		scrollPane.getViewport().setBackground(contentBackground);
+		panel.add(scrollPane, BorderLayout.CENTER);
+		return panel;
+	}
+
 	@Override
 	public void actionPerformed(ActionEvent e) {
 		String command = e.getActionCommand();
@@ -597,7 +735,7 @@ public class ManHinhChinh extends JFrame implements ActionListener{
 		else if (command.equals("Lập hoá đơn")) {
 		    System.out.println("Hiển thị form lập hóa đơn");
 		    try {
-				hienThiForm(new formLapHoaDon(taiKhoan));
+				hienThiForm(new FormLapHoaDon(taiKhoan));
 			} catch (SQLException e1) {
 				e1.printStackTrace();
 			}
@@ -605,57 +743,61 @@ public class ManHinhChinh extends JFrame implements ActionListener{
 		
 		// Xử lý cho các chức năng Nhân Viên
 		else if(command.equals("Quản lý nhân viên")) {
-			hienThiForm(new formQuanLyNhanVien());
+			hienThiForm(new FormQuanLyNhanVien());
 		}
 		else if(command.equals("Tìm kiếm nhân viên")) {
-			hienThiForm(new formTimKiemNV());
+			hienThiForm(new FormTimKiemNV());
 		}
 		else if(command.equals("Khuyến mãi")) {
-			hienThiForm(new formKhuyenMai());
+			hienThiForm(new FormKhuyenMai(taiKhoan));
 		}
 		else if(command.equals("Thuế")) {
-			hienThiForm(new formThue());
+			hienThiForm(new FormThue(taiKhoan));
 		}
 		else if (command.equals("Quản lý phiếu đặt thuốc") || command.equals("Phiếu Đặt Thuốc")) {
-			hienThiForm(new formPhieuDatThuoc(taiKhoan));
+			hienThiForm(new FormPhieuDatThuoc(taiKhoan));
 		}
 		else if (command.equals("Quản lý phiếu nhập thuốc") || command.equals("Phiếu Nhập Thuốc")) {
-			hienThiForm(new FormPhieuNhapThuoc());
+			hienThiForm(new FormPhieuNhapThuoc(taiKhoan));
 		}
 		else if(command.equals("Thống kê")) {
+			if (laNhanVienBanThuoc()) {
+				thongBaoKhongCoQuyen();
+				return;
+			}
 			hienThiForm(new FormThongKeLoiNhuan());
 		}
 		
 		// Xử lý cho các chức năng Khách Hàng
 		else if(command.equals("Quản lý khách hàng")) {
-			hienThiForm(new FormQuanLyKhachHang());
+			hienThiForm(new FormQuanLyKhachHang(taiKhoan));
 		}
 		else if(command.equals("Tìm kiếm khách hàng")) {
-			hienThiForm(new formTimKiemKH());
+			hienThiForm(new FormTimKiemKH());
 		}
 		
 		// Xử lý cho các chức năng Tài Khoản
 		else if(command.equals("Quản lý tài khoản")) {
-			hienThiForm(new formQuanLyTK());
+			hienThiForm(new FormQuanLyTK());
 		}
 		
 		// Xử lý cho các chức năng Thuốc
 		else if(command.equals("Quản lý thuốc")) {
-			hienThiForm(new formQuanLyThuoc());
+			hienThiForm(new FormQuanLyThuoc(taiKhoan));
 		}
 		else if(command.equals("Tìm kiếm thuốc")) {
-			hienThiForm(new formTimKiemThuoc());
+			hienThiForm(new FormTimKiemThuoc());
 		}
 		else if(command.equals("Danh Mục Thuốc")) {
 			try {
-				hienThiForm(new formDanhMucThuoc());
+				hienThiForm(new FormDanhMucThuoc(taiKhoan));
 			} catch (SQLException e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
 			}
 		else if(command.equals("Quản lý đổi/trả thuốc")) {
-			hienThiForm(new formQuanLyDoiTraThuoc());
+			hienThiForm(new FormQuanLyDoiTraThuoc());
 		}
 		
 		// Xử lý cho các chức năng nhà cung cấp
@@ -668,9 +810,7 @@ public class ManHinhChinh extends JFrame implements ActionListener{
 		
 		// Xử lý cho các chức năng hệ thống
 		else if (command.equals("Trang chủ")) {
-			pnCenter.removeAll();
-			pnCenter.revalidate();
-			pnCenter.repaint();
+			hienThiTrangChu();
 		}
 		else if (command.equals("Đăng xuất")) {
 			new Login().setVisible(true);
@@ -679,5 +819,16 @@ public class ManHinhChinh extends JFrame implements ActionListener{
 		else if (command.equals("Thoát")) {
 			System.exit(0);
 		}
+	}
+
+	private boolean laNhanVienBanThuoc() {
+		return taiKhoan != null && !"Nhân viên quản lý".equals(taiKhoan.getVaiTro());
+	}
+
+	private void thongBaoKhongCoQuyen() {
+		JOptionPane.showMessageDialog(this,
+				"Nhân viên không được phép truy cập mục này",
+				"Không có quyền truy cập",
+				JOptionPane.WARNING_MESSAGE);
 	}
 }

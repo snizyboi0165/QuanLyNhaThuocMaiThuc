@@ -1,4 +1,4 @@
-﻿package gui. dialog;
+package gui. dialog;
 
 import java.awt.*;
 import java.io.File;
@@ -7,8 +7,8 @@ import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
-import java.util.concurrent.atomic.AtomicReference;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -53,30 +53,61 @@ public class DialogThanhToanPhieuDatThuoc extends JDialog {
     private HoaDonDAO hdDAO;
     private ChiTietHoaDonDAO cthdDAO;
     private ThuocDAO thuocDAO;
+    private LoThuocDAO loThuocDAO;
     private KhachHangDAO khDAO;
     private PhieuDatThuocDAO pdtDAO;
+    private NhanVienDAO nhanVienDAO;
     
     private JPanel mainPanel;
     private boolean isThanhToan = false;
     private KhuyenMai khuyenMaiApDung;
     private NhanVien nv;
     private String maPhieuDatGlobal; 
+    private KhachHang khachHangThanhToan;
+    private Thue thueApDung;
+    private PhieuDatThuoc phieuDatThanhToan;
+    private ArrayList<ChiTietPhieuDatThuoc> dsPhieuDatThuocThanhToan;
+    private Runnable onThanhToanThanhCong;
     
     public DialogThanhToanPhieuDatThuoc(Frame frame, String maPhieuDat, Date ngayDat, String maKH,
             ArrayList<ChiTietPhieuDatThuoc> dsPhieuDatThuoc, double tongTien, NhanVien nv) throws SQLException {
         // Khởi tạo các DAO
         thueDAO = new ThueDAO();
         thuocDAO = new ThuocDAO();
-        new NhanVienDAO();
+        loThuocDAO = new LoThuocDAO();
+        nhanVienDAO = new NhanVienDAO();
         hdDAO = new HoaDonDAO();
         khDAO = new KhachHangDAO();
         pdtDAO = new PhieuDatThuocDAO();
         cthdDAO = new ChiTietHoaDonDAO(); // ✅ FIX: Thêm dòng này
         khuyenMaiDAO = new KhuyenMaiDAO(); // ✅ FIX: Thêm dòng này
         
-        this.nv = nv;
+        this.nv = resolveNhanVien(nv);
         this.maPhieuDatGlobal = maPhieuDat;
+        this.phieuDatThanhToan = pdtDAO.getPhieuDatThuocQuaMaPhieuDat(maPhieuDat);
+        this.dsPhieuDatThuocThanhToan = dsPhieuDatThuoc;
         initComponents(maPhieuDat, ngayDat, maKH, dsPhieuDatThuoc, tongTien);
+    }
+
+    public void setOnThanhToanThanhCong(Runnable onThanhToanThanhCong) {
+        this.onThanhToanThanhCong = onThanhToanThanhCong;
+    }
+
+    private NhanVien resolveNhanVien(NhanVien nhanVien) {
+        if (nhanVien == null || nhanVien.getMaNV() == null || nhanVien.getMaNV().trim().isEmpty()) {
+            return nhanVien;
+        }
+
+        try {
+            NhanVien fullNhanVien = nhanVienDAO.getNhanVienTheoMa(nhanVien.getMaNV());
+            if (fullNhanVien != null) {
+                return fullNhanVien;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return nhanVien;
     }
 
     private void initComponents(String maPhieuDat, Date ngayDat, String maKH,
@@ -132,8 +163,9 @@ public class DialogThanhToanPhieuDatThuoc extends JDialog {
         lblNgayDatLabel.setFont(labelFont);
         row1.add(lblNgayDatLabel);
 
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm: ss");
-        lblNgayLap = new JLabel(sdf.format(ngayDat));
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+        Date ngayLapPhieu = ngayDat != null ? ngayDat : new Date();
+        lblNgayLap = new JLabel(sdf.format(ngayLapPhieu));
         lblNgayLap.setFont(valueFont);
         row1.add(lblNgayLap);
 
@@ -149,8 +181,8 @@ public class DialogThanhToanPhieuDatThuoc extends JDialog {
         lblKHLabel.setFont(labelFont);
         row2.add(lblKHLabel);
         
-        KhachHang kh = khDAO.getKhachHangTheoMa(maKH);
-        lblKhachHang = new JLabel(kh.getHoTen());
+        khachHangThanhToan = khDAO.getKhachHangTheoMa(maKH);
+        lblKhachHang = new JLabel(khachHangThanhToan.getHoTen());
         lblKhachHang.setFont(valueFont);
         row2.add(lblKhachHang);
         
@@ -158,7 +190,7 @@ public class DialogThanhToanPhieuDatThuoc extends JDialog {
         lblSDTLabel.setFont(labelFont);
         row2.add(lblSDTLabel);
 
-        lblSoDienThoai = new JLabel(kh. getSoDienThoai());
+        lblSoDienThoai = new JLabel(khachHangThanhToan. getSoDienThoai());
         lblSoDienThoai.setFont(valueFont);
         row2.add(lblSoDienThoai);
 
@@ -174,7 +206,10 @@ public class DialogThanhToanPhieuDatThuoc extends JDialog {
         lblNVLabel.setFont(labelFont);
         row3.add(lblNVLabel);
         
-        lblNhanVien = new JLabel(nv.getTenNV());
+        String tenNhanVien = nv != null && nv.getTenNV() != null && !nv.getTenNV().trim().isEmpty()
+                ? nv.getTenNV()
+                : (nv != null ? nv.getMaNV() : "N/A");
+        lblNhanVien = new JLabel(tenNhanVien);
         lblNhanVien.setFont(valueFont);
         row3.add(lblNhanVien);
         
@@ -277,27 +312,10 @@ public class DialogThanhToanPhieuDatThuoc extends JDialog {
         // ===== GIẢM GIÁ =====
         double giamGia = 0;
         double phanTramGiamGia = 0;
-
-        try {
-            ArrayList<KhuyenMai> dsKhuyenMai = khuyenMaiDAO.getDsKhuyenMai();
-
-            for (KhuyenMai km : dsKhuyenMai) {
-                if (km.getNgayBatDau() != null && km.getNgayKetThuc() != null
-                    && isInDateRange(ngayDat, km.getNgayBatDau(), km.getNgayKetThuc())) {
-
-                    if (km.getPhanTramGiamGia() > phanTramGiamGia) {
-                        phanTramGiamGia = km.getPhanTramGiamGia();
-                        this.khuyenMaiApDung = km;
-                    }
-                }
-            }
-
-            if (phanTramGiamGia > 0) {
-                giamGia = tongTienTruocKhiKhuyenMai * phanTramGiamGia / 100;
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
+        this.khuyenMaiApDung = layKhuyenMaiDaChot();
+        if (this.khuyenMaiApDung != null) {
+            phanTramGiamGia = this.khuyenMaiApDung.getPhanTramGiamGia();
+            giamGia = tongTienTruocKhiKhuyenMai * phanTramGiamGia / 100;
         }
         
         String labelGiamGia = phanTramGiamGia > 0 ? "Giảm giá (" + " -" + String.format("%.0f%%", phanTramGiamGia) + "):" : "Giảm giá:";
@@ -315,30 +333,18 @@ public class DialogThanhToanPhieuDatThuoc extends JDialog {
         paymentPanel.add(txtGiamGia);
         
        
-        double tongTienSauKhiKhuyenMai = tongTienTruocKhiKhuyenMai;
-        if (khuyenMaiApDung != null) {
-            tongTienSauKhiKhuyenMai -= tongTienTruocKhiKhuyenMai * khuyenMaiApDung.getPhanTramGiamGia() / 100;
-        }
-        
         // ===== THUẾ =====
-        AtomicReference<Thue> thueInfo = new AtomicReference<>();
         double tienThue = 0;
         double phanTramThue = 0;
         String tenThue = "Thuế (0%)";
 
-        try {
-            ArrayList<Thue> dsThue = thueDAO.getDsThue();
-            if (dsThue != null && ! dsThue.isEmpty()) {
-                Thue thue = dsThue.get(0);
-                thueInfo.set(thue);
-
-                phanTramThue = thue.getPhanTramThue();
-                tenThue = thue.getTenThue() + " (" + String.format("%.0f%%", phanTramThue) + ")";
-                tienThue = tongTienSauKhiKhuyenMai * phanTramThue / 100;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+        thueApDung = layThueDaChot();
+        if (thueApDung != null) {
+            phanTramThue = thueApDung.getPhanTramThue();
+            tenThue = thueApDung.getTenThue() + " (" + String.format("%.0f%%", phanTramThue) + ")";
         }
+        double tienSauGiamGia = tongTienTruocKhiKhuyenMai - giamGia;
+        tienThue = tienSauGiamGia * phanTramThue / 100;
         
         JLabel lblThueLabel = new JLabel(tenThue + ":");
         lblThueLabel. setFont(paymentFont);
@@ -349,7 +355,7 @@ public class DialogThanhToanPhieuDatThuoc extends JDialog {
         txtThue.setFont(paymentFont);
         paymentPanel.add(txtThue);
 
-        double thanhTien = tongTienSauKhiKhuyenMai + tienThue;
+        double thanhTien = tienSauGiamGia + tienThue;
 
         JLabel lblThanhTienLabel = new JLabel("Thành tiền:");
         lblThanhTienLabel.setFont(new Font("Roboto", Font. BOLD, 16));
@@ -451,47 +457,24 @@ public class DialogThanhToanPhieuDatThuoc extends JDialog {
                 return;
             }
             
-            HoaDon hd = new HoaDon(maHD, ngayDat, thueInfo.get(), nv, kh,
+            Date ngayThanhToan = new Date();
+            HoaDon hd = new HoaDon(maHD, ngayThanhToan, thueApDung, nv, khachHangThanhToan,
                     khuyenMaiApDung, new PhieuDatThuoc(maPhieuDatGlobal));
             
             try {
-                if (hdDAO.themHoaDon(hd)) {
-                    boolean allSuccess = true;
-                    
-                    for (ChiTietPhieuDatThuoc ctpdt : dsPhieuDatThuoc) {
-                        ChiTietHoaDon cthd = new ChiTietHoaDon(new HoaDon(maHD), ctpdt. getThuoc(), ctpdt.getSoLuong(), ctpdt.getDonGia());
-                        if (!cthdDAO.themChiTietHoaDon(cthd)) {
-                            allSuccess = false;
-                            break;
-                        } else {
-                            String maThuoc = cthd.getThuoc().getMaThuoc();
-                            int soLuongBan = cthd.getSoLuong();
-                            int soLuongTonCu = thuocDAO.getSoLuongTonTheoMaThuoc(maThuoc);
-                            int soLuongMoi = Math.max(0, soLuongTonCu - soLuongBan);
-                            
-                            thuocDAO.updateSoLuongTonTheoMaThuoc(maThuoc, soLuongMoi);
-                        }
-                    }
-                    
-                    if (allSuccess) {
-                        if (maPhieuDatGlobal != null && !maPhieuDatGlobal.isEmpty()) {
-                            if (pdtDAO.capNhatTrangThaiPhieuDatThuoc(maPhieuDatGlobal, "Đã hoàn thành")) {
-                                System.out.println("✓ Đã cập nhật trạng thái phiếu đặt:  " + maPhieuDatGlobal);
-                            } else {
-                                JOptionPane.showMessageDialog(
-                                        this,
-                                        "Không thể cập nhật trạng thái phiếu đặt sau khi thanh toán.",
-                                        "Cảnh báo",
-                                        JOptionPane.WARNING_MESSAGE
-                                );
-                            }
-                        }
-                        
+                ArrayList<ChiTietHoaDon> dsChiTietHoaDon = new ArrayList<>();
+                for (ChiTietPhieuDatThuoc ctpdt : dsPhieuDatThuoc) {
+                    dsChiTietHoaDon.add(new ChiTietHoaDon(new HoaDon(maHD), ctpdt.getThuoc(),
+                            ctpdt.getSoLuong(), ctpdt.getDonGia()));
+                }
+
+                if (hdDAO.thanhToanPhieuDat(hd, dsChiTietHoaDon, maPhieuDatGlobal)) {
                         // ✅ FIX:  Gán mã hóa đơn để in
                         lblMaHoaDon = new JLabel(maHD);
                         
                         JOptionPane.showMessageDialog(this, "Thanh toán phiếu đặt thành công!");
                         confirmed = true;
+                        thongBaoThanhToanThanhCong();
                         
                         int choice = JOptionPane.showConfirmDialog(this, "Bạn có muốn in hoá đơn không?");
                         if (choice == JOptionPane.YES_OPTION) {
@@ -500,11 +483,8 @@ public class DialogThanhToanPhieuDatThuoc extends JDialog {
                             this.dispose();
                         }
                         
-                    } else {
-                        JOptionPane.showMessageDialog(this, "Lỗi khi thêm chi tiết hóa đơn");
-                    }
                 } else {
-                    JOptionPane. showMessageDialog(this, "Lỗi khi tạo hóa đơn");
+                    JOptionPane. showMessageDialog(this, "Lỗi khi thanh toán phiếu đặt");
                 }
 
             } catch (SQLException e1) {
@@ -520,10 +500,91 @@ public class DialogThanhToanPhieuDatThuoc extends JDialog {
         add(buttonPanel, BorderLayout.SOUTH);
     }
 
+    private void hoanTatThanhToanPhieuDat() {
+        if (confirmed) {
+            return;
+        }
+
+        String maHD = null;
+        try {
+            maHD = hdDAO.generateMaHD();
+        } catch (SQLException e1) {
+            e1.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Lỗi tạo mã hóa đơn: " + e1.getMessage());
+            return;
+        }
+
+        Date ngayThanhToan = new Date();
+        HoaDon hd = new HoaDon(maHD, ngayThanhToan, thueApDung, nv, khachHangThanhToan,
+                khuyenMaiApDung, new PhieuDatThuoc(maPhieuDatGlobal));
+
+        try {
+            ArrayList<ChiTietHoaDon> dsChiTietHoaDon = new ArrayList<>();
+            for (ChiTietPhieuDatThuoc ctpdt : dsPhieuDatThuocThanhToan) {
+                dsChiTietHoaDon.add(new ChiTietHoaDon(new HoaDon(maHD), ctpdt.getThuoc(),
+                        ctpdt.getSoLuong(), ctpdt.getDonGia()));
+            }
+
+            if (hdDAO.thanhToanPhieuDat(hd, dsChiTietHoaDon, maPhieuDatGlobal)) {
+                lblMaHoaDon = new JLabel(maHD);
+
+                JOptionPane.showMessageDialog(this, "Thanh toán phiếu đặt thành công!");
+                confirmed = true;
+                thongBaoThanhToanThanhCong();
+
+                int choice = JOptionPane.showConfirmDialog(this, "Bạn có muốn in hoá đơn không?");
+                if (choice == JOptionPane.YES_OPTION) {
+                    inHoaDon();
+                } else {
+                    this.dispose();
+                }
+            } else {
+                JOptionPane.showMessageDialog(this, "Lỗi khi thanh toán phiếu đặt");
+            }
+        } catch (SQLException e1) {
+            e1.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Lỗi hệ thống: " + e1.getMessage());
+        }
+    }
+
+    private void thongBaoThanhToanThanhCong() {
+        if (onThanhToanThanhCong != null) {
+            onThanhToanThanhCong.run();
+        }
+    }
+
+    private Thue layThueDaChot() {
+        if (phieuDatThanhToan == null || phieuDatThanhToan.getThue() == null
+                || phieuDatThanhToan.getThue().getMaThue() == null
+                || phieuDatThanhToan.getThue().getMaThue().trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return thueDAO.getThueTheoMa(phieuDatThanhToan.getThue().getMaThue());
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private KhuyenMai layKhuyenMaiDaChot() {
+        if (phieuDatThanhToan == null || phieuDatThanhToan.getKhuyenMai() == null
+                || phieuDatThanhToan.getKhuyenMai().getMaKM() == null
+                || phieuDatThanhToan.getKhuyenMai().getMaKM().trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return khuyenMaiDAO.getKhuyenMaiTheoMa(phieuDatThanhToan.getKhuyenMai().getMaKM());
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     private void taoMaQrCode() {
         try {
-            String bank = "mbbank";
-            String account = "0389470120";
+            String bank = "bidv";
+            String account = "7351363429";
             String amountStr = txtThanhTien.getText().trim()
                     .replace(",", "")
                     .replace("VNĐ", "")
@@ -555,7 +616,7 @@ public class DialogThanhToanPhieuDatThuoc extends JDialog {
 
             infoPanel.add(lblAmount);
             infoPanel.add(Box.createRigidArea(new Dimension(0, 10)));
-            infoPanel.add(new JLabel("Ngân hàng: MB Bank") {{ setAlignmentX(Component.CENTER_ALIGNMENT); }});
+            infoPanel.add(new JLabel("Ngân hàng: BIDV") {{ setAlignmentX(Component.CENTER_ALIGNMENT); }});
             infoPanel. add(new JLabel("Số tài khoản: " + account) {{ setAlignmentX(Component.CENTER_ALIGNMENT); }});
 
             dlQrCode.add(infoPanel, BorderLayout. NORTH);
@@ -599,6 +660,7 @@ public class DialogThanhToanPhieuDatThuoc extends JDialog {
                 if (choice == JOptionPane.YES_OPTION) {
                     isThanhToan = true;
                     dlQrCode.dispose();
+                    hoanTatThanhToanPhieuDat();
                 }
             });
 
@@ -647,6 +709,11 @@ public class DialogThanhToanPhieuDatThuoc extends JDialog {
             com.itextpdf.text.Font fontBold = new com.itextpdf.text.Font(bf, 12, com.itextpdf.text.Font.BOLD);
 
             // --- 4. VẼ TIÊU ĐỀ VÀ THÔNG TIN CHUNG ---
+            com.itextpdf.text.Font fontStoreName = new com.itextpdf.text.Font(bf, 20, com.itextpdf.text.Font.BOLD);
+            com.itextpdf.text.Paragraph storeName = new com.itextpdf.text.Paragraph("NHÀ THUỐC MAI THỨC", fontStoreName);
+            storeName.setAlignment(Element.ALIGN_CENTER);
+            document.add(storeName);
+
             com.itextpdf.text.Paragraph title = new com.itextpdf.text.Paragraph("HÓA ĐƠN THANH TOÁN", fontTitle);
             title.setAlignment(Element.ALIGN_CENTER); // Căn giữa tiêu đề
             document.add(title);
@@ -720,6 +787,32 @@ public class DialogThanhToanPhieuDatThuoc extends JDialog {
     private boolean isInDateRange(Date currentDate, Date startDate, Date endDate) {
         if (currentDate == null || startDate == null || endDate == null) return false;
         return ! currentDate.before(startDate) && !currentDate.after(endDate);
+    }
+
+    private boolean isPromotionActive(Date currentDate, KhuyenMai khuyenMai) {
+        if (khuyenMai == null || currentDate == null
+                || khuyenMai.getNgayBatDau() == null || khuyenMai.getNgayKetThuc() == null) {
+            return false;
+        }
+        if (!khuyenMai.isLapHangNam()) {
+            return isInDateRange(currentDate, khuyenMai.getNgayBatDau(), khuyenMai.getNgayKetThuc());
+        }
+        return isInAnnualDateRange(currentDate, khuyenMai.getNgayBatDau(), khuyenMai.getNgayKetThuc());
+    }
+
+    private boolean isInAnnualDateRange(Date currentDate, Date startDate, Date endDate) {
+        int current = monthDayValue(currentDate);
+        int start = monthDayValue(startDate);
+        int end = monthDayValue(endDate);
+        return start <= end
+                ? current >= start && current <= end
+                : current >= start || current <= end;
+    }
+
+    private int monthDayValue(Date date) {
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(date);
+        return (cal.get(Calendar.MONTH) + 1) * 100 + cal.get(Calendar.DAY_OF_MONTH);
     }
 
     public boolean isConfirmed() {

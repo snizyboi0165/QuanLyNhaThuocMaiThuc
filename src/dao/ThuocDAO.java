@@ -6,217 +6,212 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.LocalDate;
 import java.util.ArrayList;
 
-import ConnectDB.DatabaseConnection;
+import connectdb.DatabaseConnection;
 import entity.DanhMucThuoc;
 import entity.Thuoc;
 
 public class ThuocDAO {
-	private Connection getSafeConnection() throws SQLException {
+    private Connection getSafeConnection() throws SQLException {
         Connection conn = DatabaseConnection.getInstance().getConnection();
         if (conn == null || conn.isClosed()) {
             conn = DatabaseConnection.getInstance().getConnection();
             if (conn == null || conn.isClosed()) {
-                throw new SQLException("Không thể thiết lập kết nối đến cơ sở dữ liệu");
+                throw new SQLException("Khong the thiet lap ket noi den co so du lieu");
             }
         }
         return conn;
     }
-    
-
-    private java.sql.Date convertUtilDateToSqlDate(java.util.Date utilDate) {
-        if (utilDate == null) {
-            return null;
-        }
-        return new java.sql.Date(utilDate.getTime());
-    }
 
     public String generateMaThuoc() throws SQLException {
         String sql = "SELECT dbo.fn_GenerateMaThuoc() AS maThuoc";
-        try (Connection con = getSafeConnection()) {
-            Statement stmt = con.createStatement();
-            ResultSet rs = stmt.executeQuery(sql);
+        try (Connection con = getSafeConnection();
+                Statement stmt = con.createStatement();
+                ResultSet rs = stmt.executeQuery(sql)) {
             if (rs.next()) {
                 return rs.getString("maThuoc");
             }
         }
-        throw new SQLException("Không thể tạo mã thuốc tự động");
+        throw new SQLException("Khong the tao ma thuoc tu dong");
     }
-    
+
     public ArrayList<Thuoc> getDsThuoc() throws SQLException {
-    	ArrayList<Thuoc> temp = new ArrayList<>();
-    	String sql = "SELECT * FROM Thuoc";
-    	try (Connection con = getSafeConnection()) {
-    		Statement stmt = con.createStatement();
-    		try (ResultSet rs = stmt.executeQuery(sql)) {
-    			while (rs.next()) {
-                    String mt = rs.getString("maThuoc");
-                    String tenThuoc = rs.getString("tenThuoc");
-                    String donViTinh = rs.getString("donViTinh");
-                    double giaBan = rs.getDouble("giaBan");
-                    int soLuong = rs.getInt("soLuongTon");
-                    Date hanSuDung = rs.getDate("hanSuDung");
-                    String moTa = rs.getString("moTa");
-                    String maDanhMuc = rs.getString("maDanhMuc");
-                    String hinhAnh = rs.getString("hinhAnh");
-                    String thanhPhan = rs.getString("thanhPhan");
-                    Date ngaySanXuat = rs.getDate("ngaySanXuat");
-                    String xuatXu = rs.getString("xuatXu");
-                    Thuoc thuoc = new Thuoc(mt, tenThuoc, donViTinh, giaBan, soLuong, hanSuDung, moTa, new DanhMucThuoc(maDanhMuc), hinhAnh, thanhPhan, ngaySanXuat, xuatXu);
-                    temp.add(thuoc);
-    			}
-    		}
-    	}
-    	return temp;
+        ArrayList<Thuoc> temp = new ArrayList<>();
+        String sql = "SELECT v.*, dm.tenDanhMuc "
+                + "FROM vw_TonKhoThuoc v LEFT JOIN DanhMucThuoc dm ON v.maDanhMuc = dm.maDanhMuc";
+        try (Connection con = getSafeConnection();
+                Statement stmt = con.createStatement();
+                ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                temp.add(mapThuoc(rs));
+            }
+        }
+        return temp;
     }
-    
+
     public Thuoc getThuocTheoMaThuoc(String maThuoc) throws SQLException {
-        String sql = "SELECT * FROM Thuoc WHERE maThuoc = ?";
-        try (Connection con = getSafeConnection()) {
-            PreparedStatement stmt = con.prepareStatement(sql);
+        String sql = "SELECT v.*, dm.tenDanhMuc "
+                + "FROM vw_TonKhoThuoc v LEFT JOIN DanhMucThuoc dm ON v.maDanhMuc = dm.maDanhMuc "
+                + "WHERE v.maThuoc = ?";
+        try (Connection con = getSafeConnection();
+                PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setString(1, maThuoc);
-            
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    String mt = rs.getString("maThuoc");
-                    String tenThuoc = rs.getString("tenThuoc");
-                    String donViTinh = rs.getString("donViTinh");
-                    double giaBan = rs.getDouble("giaBan");
-                    int soLuong = rs.getInt("soLuongTon");
-                    Date hanSuDung = rs.getDate("hanSuDung");
-                    String moTa = rs.getString("moTa");
-                    String maDanhMuc = rs.getString("maDanhMuc");
-                    String hinhAnh = rs.getString("hinhAnh");
-                    String thanhPhan = rs.getString("thanhPhan");
-                    Date ngaySanXuat = rs.getDate("ngaySanXuat");
-                    String xuatXu = rs.getString("xuatXu");
-                    
-                    return new Thuoc(mt, tenThuoc, donViTinh, giaBan, soLuong, hanSuDung, moTa, new DanhMucThuoc(maDanhMuc), hinhAnh, thanhPhan, ngaySanXuat, xuatXu);
+                    return mapThuoc(rs);
                 }
             }
         }
         return null;
     }
-    
-    public boolean updateSoLuongTonTheoMaThuoc(String maThuoc, int soLuongNew) throws SQLException {
-        String sql = "UPDATE Thuoc SET SoLuongTon = ? WHERE MaThuoc = ?";
-        try (Connection con = getSafeConnection()) {
-            PreparedStatement stmt = con.prepareStatement(sql);
-            stmt.setInt(1, soLuongNew);
-            stmt.setString(2, maThuoc);
 
-            int rowAffected = stmt.executeUpdate();
-            return rowAffected > 0;
+    public ArrayList<Thuoc> getDsThuocBanDuoc() throws SQLException {
+        ArrayList<Thuoc> temp = new ArrayList<>();
+        String sql = "SELECT t.maThuoc, t.tenThuoc, t.donViTinh, t.giaBan, t.moTa, t.maDanhMuc, "
+                + "t.hinhAnh, t.thanhPhan, t.xuatXu, dm.tenDanhMuc, "
+                + "SUM(lt.soLuongConLai) AS soLuongTon, MIN(lt.hanSuDung) AS hanSuDungGanNhat "
+                + "FROM Thuoc t "
+                + "JOIN LoThuoc lt ON t.maThuoc = lt.maThuoc "
+                + "LEFT JOIN DanhMucThuoc dm ON t.maDanhMuc = dm.maDanhMuc "
+                + "WHERE lt.soLuongConLai > 0 "
+                + "AND lt.hanSuDung >= CAST(GETDATE() AS DATE) "
+                + "AND lt.trangThai = N'Còn hàng' "
+                + "GROUP BY t.maThuoc, t.tenThuoc, t.donViTinh, t.giaBan, t.moTa, t.maDanhMuc, "
+                + "t.hinhAnh, t.thanhPhan, t.xuatXu, dm.tenDanhMuc "
+                + "ORDER BY t.maThuoc";
+        try (Connection con = getSafeConnection();
+                Statement stmt = con.createStatement();
+                ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                temp.add(mapThuoc(rs));
+            }
         }
+        return temp;
     }
 
-    
-    public int getSoLuongTonTheoMaThuoc(String maThuoc) throws SQLException {
-        String sql = "SELECT SoLuongTon FROM Thuoc WHERE MaThuoc = ?";
-        try (Connection con = getSafeConnection()) {
-            PreparedStatement stmt = con.prepareStatement(sql);
+    public Thuoc getThuocBanDuocTheoMa(String maThuoc) throws SQLException {
+        String sql = "SELECT t.maThuoc, t.tenThuoc, t.donViTinh, t.giaBan, t.moTa, t.maDanhMuc, "
+                + "t.hinhAnh, t.thanhPhan, t.xuatXu, dm.tenDanhMuc, "
+                + "SUM(lt.soLuongConLai) AS soLuongTon, MIN(lt.hanSuDung) AS hanSuDungGanNhat "
+                + "FROM Thuoc t "
+                + "JOIN LoThuoc lt ON t.maThuoc = lt.maThuoc "
+                + "LEFT JOIN DanhMucThuoc dm ON t.maDanhMuc = dm.maDanhMuc "
+                + "WHERE t.maThuoc = ? "
+                + "AND lt.soLuongConLai > 0 "
+                + "AND lt.hanSuDung >= CAST(GETDATE() AS DATE) "
+                + "AND lt.trangThai = N'Còn hàng' "
+                + "GROUP BY t.maThuoc, t.tenThuoc, t.donViTinh, t.giaBan, t.moTa, t.maDanhMuc, "
+                + "t.hinhAnh, t.thanhPhan, t.xuatXu, dm.tenDanhMuc";
+        try (Connection con = getSafeConnection();
+                PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setString(1, maThuoc);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                return rs.getInt("SoLuongTon");
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return mapThuoc(rs);
+                }
+            }
+        }
+        return null;
+    }
+
+    private Thuoc mapThuoc(ResultSet rs) throws SQLException {
+        String maThuoc = rs.getString("maThuoc");
+        String tenThuoc = rs.getString("tenThuoc");
+        String donViTinh = rs.getString("donViTinh");
+        double giaBan = rs.getDouble("giaBan");
+        int soLuongTon = rs.getInt("soLuongTon");
+        Date hanSuDungGanNhat = rs.getDate("hanSuDungGanNhat");
+        String moTa = rs.getString("moTa");
+        String maDanhMuc = rs.getString("maDanhMuc");
+        String tenDanhMuc = rs.getString("tenDanhMuc");
+        String hinhAnh = rs.getString("hinhAnh");
+        String thanhPhan = rs.getString("thanhPhan");
+        String xuatXu = rs.getString("xuatXu");
+
+        return new Thuoc(maThuoc, tenThuoc, donViTinh, giaBan, soLuongTon, hanSuDungGanNhat,
+                moTa, new DanhMucThuoc(maDanhMuc, tenDanhMuc), hinhAnh, thanhPhan, null, xuatXu);
+    }
+
+    public boolean updateSoLuongTonTheoMaThuoc(String maThuoc, int soLuongNew) throws SQLException {
+        throw new SQLException("Ton kho duoc quan ly theo LoThuoc, khong cap nhat truc tiep Thuoc.soLuongTon");
+    }
+
+    public boolean truSoLuongTonTheoMaThuoc(String maThuoc, int soLuongBan) throws SQLException {
+        return new LoThuocDAO().truTonTheoFEFO(maThuoc, soLuongBan);
+    }
+
+    public int getSoLuongTonTheoMaThuoc(String maThuoc) throws SQLException {
+        String sql = "SELECT soLuongTon FROM vw_TonKhoThuoc WHERE maThuoc = ?";
+        try (Connection con = getSafeConnection();
+                PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setString(1, maThuoc);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("soLuongTon");
+                }
             }
         }
         return 0;
     }
-    
 
     public String themThuoc(Thuoc thuoc) throws SQLException {
-        // Lấy mã thuốc tự động
         String maThuocMoi = generateMaThuoc();
-        
-        String sql = "INSERT INTO Thuoc (maThuoc, tenThuoc, donViTinh, giaBan, soLuongTon, " +
-                     "hanSuDung, moTa, maDanhMuc, hinhAnh, thanhPhan, ngaySanXuat, xuatXu) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        
-        try (Connection con = getSafeConnection()) {
-            PreparedStatement stmt = con.prepareStatement(sql);
+        String sql = "INSERT INTO Thuoc (maThuoc, tenThuoc, donViTinh, giaBan, moTa, maDanhMuc, hinhAnh, thanhPhan, xuatXu) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+        try (Connection con = getSafeConnection();
+                PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setString(1, maThuocMoi);
             stmt.setString(2, thuoc.getTenThuoc());
             stmt.setString(3, thuoc.getDonViTinh());
             stmt.setDouble(4, thuoc.getGiaBan());
-            stmt.setInt(5, thuoc.getSoLuongTon());
-            stmt.setDate(6, convertUtilDateToSqlDate(thuoc.getHanSuDung()));
-            stmt.setString(7, thuoc.getMoTa());
-            stmt.setString(8, thuoc.getDanhMucThuoc().getMaDanhMuc());
-            stmt.setString(9, thuoc.getHinhAnh());
-            stmt.setString(10, thuoc.getThanhPhan());
-            stmt.setDate(11, convertUtilDateToSqlDate(thuoc.getNgaySanXuat()));
-            stmt.setString(12, thuoc.getXuatXu());
-            
+            stmt.setString(5, thuoc.getMoTa());
+            stmt.setString(6, thuoc.getDanhMucThuoc().getMaDanhMuc());
+            stmt.setString(7, thuoc.getHinhAnh());
+            stmt.setString(8, thuoc.getThanhPhan());
+            stmt.setString(9, thuoc.getXuatXu());
+
             int rowAffected = stmt.executeUpdate();
             return rowAffected > 0 ? maThuocMoi : null;
         }
     }
-    
-    /**
-     * Cập nhật thông tin thuốc theo mã thuốc
-     * @param thuoc Đối tượng Thuoc chứa thông tin cần cập nhật
-     * @return true nếu cập nhật thành công, false nếu thất bại
-     * @throws SQLException
-     */
+
     public boolean capNhatThuoc(Thuoc thuoc) throws SQLException {
-        String sql = "UPDATE Thuoc SET tenThuoc = ?, donViTinh = ?, giaBan = ?, " +
-                     "soLuongTon = ?, hanSuDung = ?, moTa = ?, maDanhMuc = ?, " +
-                     "hinhAnh = ?, thanhPhan = ?, ngaySanXuat = ?, xuatXu = ? " +
-                     "WHERE maThuoc = ?";
-        
-        try (Connection con = getSafeConnection()) {
-            PreparedStatement stmt = con.prepareStatement(sql);
+        String sql = "UPDATE Thuoc SET tenThuoc = ?, donViTinh = ?, giaBan = ?, moTa = ?, "
+                + "maDanhMuc = ?, hinhAnh = ?, thanhPhan = ?, xuatXu = ? WHERE maThuoc = ?";
+
+        try (Connection con = getSafeConnection();
+                PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setString(1, thuoc.getTenThuoc());
             stmt.setString(2, thuoc.getDonViTinh());
             stmt.setDouble(3, thuoc.getGiaBan());
-            stmt.setInt(4, thuoc.getSoLuongTon());
-            stmt.setDate(5, convertUtilDateToSqlDate(thuoc.getHanSuDung()));
-            stmt.setString(6, thuoc.getMoTa());
-            stmt.setString(7, thuoc.getDanhMucThuoc().getMaDanhMuc());
-            stmt.setString(8, thuoc.getHinhAnh());
-            stmt.setString(9, thuoc.getThanhPhan());
-            stmt.setDate(10, convertUtilDateToSqlDate(thuoc.getNgaySanXuat()));
-            stmt.setString(11, thuoc.getXuatXu());
-            stmt.setString(12, thuoc.getMaThuoc());
-            
-            int rowAffected = stmt.executeUpdate();
-            return rowAffected > 0;
+            stmt.setString(4, thuoc.getMoTa());
+            stmt.setString(5, thuoc.getDanhMucThuoc().getMaDanhMuc());
+            stmt.setString(6, thuoc.getHinhAnh());
+            stmt.setString(7, thuoc.getThanhPhan());
+            stmt.setString(8, thuoc.getXuatXu());
+            stmt.setString(9, thuoc.getMaThuoc());
+
+            return stmt.executeUpdate() > 0;
         }
     }
-    
-    /**
-     * Xóa thuốc theo mã thuốc
-     * @param maThuoc Mã thuốc cần xóa
-     * @return true nếu xóa thành công, false nếu thất bại
-     * @throws SQLException
-     */
+
     public boolean xoaThuoc(String maThuoc) throws SQLException {
         String sql = "DELETE FROM Thuoc WHERE maThuoc = ?";
-        
-        try (Connection con = getSafeConnection()) {
-            PreparedStatement stmt = con.prepareStatement(sql);
+        try (Connection con = getSafeConnection();
+                PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setString(1, maThuoc);
-            
-            int rowAffected = stmt.executeUpdate();
-            return rowAffected > 0;
+            return stmt.executeUpdate() > 0;
         }
     }
-    
-    /**
-     * Kiểm tra xem thuốc có tồn tại trong cơ sở dữ liệu không
-     * @param maThuoc Mã thuốc cần kiểm tra
-     * @return true nếu tồn tại, false nếu không tồn tại
-     * @throws SQLException
-     */
+
     public boolean kiemTraTonTai(String maThuoc) throws SQLException {
         String sql = "SELECT COUNT(*) FROM Thuoc WHERE maThuoc = ?";
-        
-        try (Connection con = getSafeConnection()) {
-            PreparedStatement stmt = con.prepareStatement(sql);
+        try (Connection con = getSafeConnection();
+                PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setString(1, maThuoc);
-            
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     return rs.getInt(1) > 0;
@@ -224,5 +219,53 @@ public class ThuocDAO {
             }
         }
         return false;
+    }
+
+    public ArrayList<Thuoc> getThuocSapHetHang(int nguongTon, int gioiHan) throws SQLException {
+        ArrayList<Thuoc> ketQua = new ArrayList<>();
+        String sql = "SELECT TOP " + gioiHan + " v.*, dm.tenDanhMuc "
+                + "FROM vw_TonKhoThuoc v "
+                + "LEFT JOIN DanhMucThuoc dm ON v.maDanhMuc = dm.maDanhMuc "
+                + "WHERE v.soLuongTon > 0 AND v.soLuongTon <= ? "
+                + "ORDER BY v.soLuongTon ASC, v.hanSuDungGanNhat ASC";
+        try (Connection con = getSafeConnection();
+                PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setInt(1, nguongTon);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    ketQua.add(mapThuoc(rs));
+                }
+            }
+        }
+        return ketQua;
+    }
+
+    public ArrayList<Thuoc> getThuocSapHetHan(int soNgay, int gioiHan) throws SQLException {
+        ArrayList<Thuoc> ketQua = new ArrayList<>();
+        LocalDate homNay = LocalDate.now();
+        LocalDate denNgay = homNay.plusDays(soNgay);
+        String sql = "SELECT TOP " + gioiHan + " t.maThuoc, t.tenThuoc, t.donViTinh, t.giaBan, t.moTa, t.maDanhMuc, "
+                + "t.hinhAnh, t.thanhPhan, t.xuatXu, dm.tenDanhMuc, "
+                + "SUM(lt.soLuongConLai) AS soLuongTon, MIN(lt.hanSuDung) AS hanSuDungGanNhat "
+                + "FROM Thuoc t "
+                + "JOIN LoThuoc lt ON t.maThuoc = lt.maThuoc "
+                + "LEFT JOIN DanhMucThuoc dm ON t.maDanhMuc = dm.maDanhMuc "
+                + "WHERE lt.soLuongConLai > 0 "
+                + "AND lt.hanSuDung >= ? AND lt.hanSuDung <= ? "
+                + "AND lt.trangThai = N'Còn hàng' "
+                + "GROUP BY t.maThuoc, t.tenThuoc, t.donViTinh, t.giaBan, t.moTa, t.maDanhMuc, "
+                + "t.hinhAnh, t.thanhPhan, t.xuatXu, dm.tenDanhMuc "
+                + "ORDER BY MIN(lt.hanSuDung) ASC, SUM(lt.soLuongConLai) ASC";
+        try (Connection con = getSafeConnection();
+                PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setDate(1, Date.valueOf(homNay));
+            stmt.setDate(2, Date.valueOf(denNgay));
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    ketQua.add(mapThuoc(rs));
+                }
+            }
+        }
+        return ketQua;
     }
 }

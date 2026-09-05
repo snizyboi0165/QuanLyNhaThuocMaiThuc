@@ -1,4 +1,4 @@
-﻿package gui.form;
+package gui.form;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -10,9 +10,7 @@ import java.awt.Frame;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.sql.SQLException;
-import java.text.NumberFormat;
 import java.util.ArrayList;
-import java.util.Locale;
 
 import javax.swing.DefaultComboBoxModel; // THÊM IMPORT
 import javax.swing.JButton;
@@ -89,13 +87,11 @@ public class FormQuanLyNhaCungCap extends JPanel implements ActionListener {
             if (dsNCC.isEmpty()) {
                 // Tùy chọn: Hiển thị thông báo không tìm thấy kết quả
             } else {
-                 NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
                 for (NhaCungCap ncc : dsNCC) {
                     tableModel.addRow(new Object[] {
                         ncc.getMaNCC(),
                         ncc.getTenNCC(),
-                        ncc.getSoDienThoai(),
-                        currencyFormatter.format(ncc.getCongNo())
+                        ncc.getSoDienThoai()
                     });
                 }
             }
@@ -225,7 +221,7 @@ public class FormQuanLyNhaCungCap extends JPanel implements ActionListener {
         actionPanel.add(btnDelete);
         btnInfo.setFont(new Font("Roboto", Font.BOLD, 14));
         btnInfo.setIcon(new FlatSVGIcon(getClass().getResource("/img/info.svg")));
-        btnInfo.setText("INFO");
+        btnInfo.setText("CHI TIẾT");
         btnInfo.setBorder(null);
         btnInfo.setBorderPainted(false);
         btnInfo.setContentAreaFilled(false);
@@ -239,16 +235,18 @@ public class FormQuanLyNhaCungCap extends JPanel implements ActionListener {
         add(headerPanel, BorderLayout.PAGE_START);
         tablePanel.setBorder(new LineBorder(new Color(230, 230, 230), 2, true));
         tablePanel.setLayout(new BorderLayout());
-        String[] tableTitle = {"Mã nhà cung cấp", "Tên nhà cung cấp", "Số điện thoại", "Công nợ"};
-        tableModel = new DefaultTableModel(tableTitle, 0);
+        String[] tableTitle = {"Mã nhà cung cấp", "Tên nhà cung cấp", "Số điện thoại"};
+        tableModel = new DefaultTableModel(tableTitle, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
         table.getTableHeader().setFont(headerTable);
         table.setModel(tableModel);
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
         centerRenderer.setHorizontalAlignment(JLabel.CENTER);
-        DefaultTableCellRenderer rightRenderer = new DefaultTableCellRenderer();
-        rightRenderer.setHorizontalAlignment(JLabel.RIGHT);
         table.setDefaultRenderer(Object.class, centerRenderer);
-        table.getColumnModel().getColumn(3).setCellRenderer(rightRenderer);
         table.getColumnModel().getColumn(0).setPreferredWidth(30);
         table.getColumnModel().getColumn(1).setPreferredWidth(200);
         table.setFocusable(false);
@@ -275,13 +273,11 @@ public class FormQuanLyNhaCungCap extends JPanel implements ActionListener {
         tableModel.setRowCount(0); // Xóa hết dữ liệu cũ
         try {
             ArrayList<NhaCungCap> dsNCC = nccDAO.getDSNhaCungCap();
-            NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
             for (NhaCungCap ncc : dsNCC) {
                 tableModel.addRow(new Object[] {
                     ncc.getMaNCC(),
                     ncc.getTenNCC(),
-                    ncc.getSoDienThoai(),
-                    currencyFormatter.format(ncc.getCongNo())
+                    ncc.getSoDienThoai()
                 });
             }
         } catch (SQLException e) {

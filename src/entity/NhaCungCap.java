@@ -10,20 +10,18 @@ public class NhaCungCap implements Serializable {
     private String maNCC;
     private String tenNCC;
     private String soDienThoai;
-    private double congNo;
     
     public static final String REGEX_MA_NCC = "^NCC\\d{5}$";
     public static final String REGEX_SO_DIEN_THOAI = "^(\\+84|0)\\d{9}$";
     
     public NhaCungCap() {
-        this("", "", "", 0.0);
+        this("", "", "");
     }
     
-    public NhaCungCap(String maNCC, String tenNCC, String soDienThoai, double congNo) {
+    public NhaCungCap(String maNCC, String tenNCC, String soDienThoai) {
         setMaNCC(maNCC);
         setTenNCC(tenNCC);
         setSoDienThoai(soDienThoai);
-        setCongNo(congNo);
     }
     
     public NhaCungCap(NhaCungCap ncc) {
@@ -31,7 +29,6 @@ public class NhaCungCap implements Serializable {
             this.maNCC = ncc.maNCC;
             this.tenNCC = ncc.tenNCC;
             this.soDienThoai = ncc.soDienThoai;
-            this.congNo = ncc.congNo;
         }
     }
     
@@ -63,13 +60,6 @@ public class NhaCungCap implements Serializable {
         this.soDienThoai = soDienThoai;
     }
     
-    public void setCongNo(double congNo) {
-        if (congNo < 0) {
-            throw new IllegalArgumentException("Công nợ phải lớn hơn hoặc bằng 0");
-        }
-        this.congNo = congNo;
-    }
-    
     public String getMaNCC() {
         return maNCC;
     }
@@ -82,17 +72,12 @@ public class NhaCungCap implements Serializable {
         return soDienThoai;
     }
     
-    public double getCongNo() {
-        return congNo;
-    }
-    
     @Override
     public String toString() {
         return "NhaCungCap{" +
                 "maNCC='" + maNCC + '\'' +
                 ", tenNCC='" + tenNCC + '\'' +
                 ", soDienThoai='" + soDienThoai + '\'' +
-                ", congNo=" + congNo +
                 '}';
     }
     

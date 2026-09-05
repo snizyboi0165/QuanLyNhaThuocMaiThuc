@@ -1,4 +1,4 @@
-﻿package gui.form;
+package gui.form;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -24,6 +24,8 @@ import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.border.LineBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
@@ -44,13 +46,14 @@ import gui.dialog.DialogChiTietPhieuDatThuoc;
 import gui.dialog.DialogThanhToanHoaDon;
 import gui.dialog.DialogThanhToanPhieuDatThuoc;
 
-public class formPhieuDatThuoc extends JPanel {
+public class FormPhieuDatThuoc extends JPanel {
 
     // Components giao diện
     private JPanel pnlHeader;
     private JPanel pnlTimKiemWrapper;
     private JPanel pnlTimKiem;
     private JComboBox<String> cboLoaiTimKiem;
+    private JComboBox<String> cboTrangThai;
     private JTextField txtTimKiem;
     private JButton btnLamMoi;
     
@@ -75,7 +78,7 @@ public class formPhieuDatThuoc extends JPanel {
     
     private Font fontHeaderTable = new Font("Roboto", Font.BOLD, 18);
 
-    public formPhieuDatThuoc(TaiKhoan tk) {
+    public FormPhieuDatThuoc(TaiKhoan tk) {
         this.taiKhoan = tk;
         khoiTaoGiaoDien();
     }
@@ -117,7 +120,31 @@ public class formPhieuDatThuoc extends JPanel {
         txtTimKiem.setToolTipText("Tìm kiếm");
         txtTimKiem.setPreferredSize(new Dimension(240, 40));
         txtTimKiem.setSelectionColor(new Color(230, 245, 245));
+        txtTimKiem.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                timKiem();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                timKiem();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                timKiem();
+            }
+        });
         pnlTimKiem.add(txtTimKiem);
+
+        cboTrangThai = new JComboBox<>(new String[]{"Tất cả", "Đã hoàn thành", "Chưa hoàn thành"});
+        cboTrangThai.setPreferredSize(new Dimension(240, 40));
+        cboTrangThai.setVisible(false);
+        cboTrangThai.addActionListener(e -> timKiem());
+        pnlTimKiem.add(cboTrangThai);
+
+        cboLoaiTimKiem.addActionListener(e -> capNhatKieuTimKiem());
 
         btnLamMoi = new JButton(new FlatSVGIcon(getClass().getResource("/img/reload.svg")));
         btnLamMoi.setToolTipText("Làm mới");
@@ -126,6 +153,8 @@ public class formPhieuDatThuoc extends JPanel {
         btnLamMoi.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnLamMoi.setPreferredSize(new Dimension(48, 48));
         btnLamMoi.addActionListener(e -> {
+            txtTimKiem.setText("");
+            cboTrangThai.setSelectedIndex(0);
             try { loadTableData(); } catch (Exception ex) { ex.printStackTrace(); }
         });
         pnlTimKiem.add(btnLamMoi);
@@ -186,7 +215,12 @@ public class formPhieuDatThuoc extends JPanel {
 
         // 2.2 Table
         String[] tableTitle = {"Mã phiếu đặt", "Ngày đặt", "Mã khách hàng", "Địa chỉ", "Hình thức thanh toán", "Trạng thái"};
-        tableModel = new DefaultTableModel(tableTitle, 0);
+        tableModel = new DefaultTableModel(tableTitle, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
         tblPhieuDat = new JTable(tableModel);
         tblPhieuDat.getTableHeader().setFont(fontHeaderTable);
         tblPhieuDat.setRowHeight(40);
@@ -251,7 +285,7 @@ public class formPhieuDatThuoc extends JPanel {
 			parent.removeAll();
 			
 			// Thêm Form tạo phiếu mới (FormPhieuDatThuoc)
-			parent.add(new formThemPhieuDatThuoc(taiKhoan)); 
+			parent.add(new FormThemPhieuDatThuoc(taiKhoan)); 
 			
 			// Cập nhật giao diện
 			parent.revalidate();
@@ -263,15 +297,82 @@ public class formPhieuDatThuoc extends JPanel {
         tableModel.setRowCount(0);
         ArrayList<PhieuDatThuoc> dsPDT = pdtDAO.getDsPhieuDatThuoc();
         for (PhieuDatThuoc pdt : dsPDT) {
-            tableModel.addRow(new Object[] {
-                pdt.getMaPhieuDat(), 
-                pdt.getNgayDat(),
-                pdt.getKhachHang().getMaKH(),
-                pdt.getDiaChi(),
-                pdt.getHinhThucThanhToan(), 
-                pdt.getTrangThai()
-            });
+            themDongPhieuDat(pdt);
         }
+    }
+
+    private void capNhatKieuTimKiem() {
+        boolean timTheoTrangThai = "Trạng thái".equals(cboLoaiTimKiem.getSelectedItem().toString());
+        txtTimKiem.setVisible(!timTheoTrangThai);
+        cboTrangThai.setVisible(timTheoTrangThai);
+        if (timTheoTrangThai) {
+            txtTimKiem.setText("");
+        } else {
+            cboTrangThai.setSelectedIndex(0);
+        }
+        pnlTimKiem.revalidate();
+        pnlTimKiem.repaint();
+        timKiem();
+    }
+
+    private void timKiem() {
+        String loaiTimKiem = cboLoaiTimKiem.getSelectedItem().toString();
+        String keyword = "Trạng thái".equals(loaiTimKiem)
+                ? cboTrangThai.getSelectedItem().toString().trim().toLowerCase()
+                : txtTimKiem.getText().trim().toLowerCase();
+        if ("Tất cả".equalsIgnoreCase(keyword)) {
+            keyword = "";
+        }
+
+        try {
+            tableModel.setRowCount(0);
+            for (PhieuDatThuoc pdt : pdtDAO.getDsPhieuDatThuoc()) {
+                String maPhieuDat = safeLower(pdt.getMaPhieuDat());
+                String trangThai = safeLower(pdt.getTrangThai());
+                boolean match = keyword.isEmpty();
+
+                if (!match) {
+                    switch (loaiTimKiem) {
+                        case "Mã":
+                            match = maPhieuDat.contains(keyword);
+                            break;
+                        case "Trạng thái":
+                            match = trangThai.contains(keyword);
+                            break;
+                        default:
+                            match = maPhieuDat.contains(keyword)
+                                    || safeLower(pdt.getKhachHang() != null ? pdt.getKhachHang().getMaKH() : "").contains(keyword)
+                                    || safeLower(pdt.getDiaChi()).contains(keyword)
+                                    || safeLower(pdt.getHinhThucThanhToan()).contains(keyword)
+                                    || trangThai.contains(keyword);
+                            break;
+                    }
+                }
+
+                if (match) {
+                    themDongPhieuDat(pdt);
+                }
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Lỗi khi tìm kiếm phiếu đặt: " + ex.getMessage(),
+                    "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void themDongPhieuDat(PhieuDatThuoc pdt) {
+        tableModel.addRow(new Object[] {
+            pdt.getMaPhieuDat(),
+            pdt.getNgayDat(),
+            pdt.getKhachHang() != null ? pdt.getKhachHang().getMaKH() : "",
+            pdt.getDiaChi(),
+            pdt.getHinhThucThanhToan(),
+            pdt.getTrangThai()
+        });
+    }
+
+    private String safeLower(String value) {
+        return value == null ? "" : value.toLowerCase();
     }
 
     private void thanhToanPhieuDatThuoc() throws Exception {
@@ -298,6 +399,13 @@ public class formPhieuDatThuoc extends JPanel {
         DialogThanhToanPhieuDatThuoc dialog = new DialogThanhToanPhieuDatThuoc(
             frame, maPhieuDat, pdt.getNgayDat(), pdt.getKhachHang().getMaKH(), dsPhieuDatThuoc, tongTien, taiKhoan.getNhanVien()
         );
+        dialog.setOnThanhToanThanhCong(() -> {
+            try {
+                loadTableData();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        });
         dialog.setVisible(true);
         if (dialog.isConfirmed()) {
             loadTableData();

@@ -1,16 +1,15 @@
-package ConnectDB;
+package connectdb;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class DatabaseConnection {
-    private static DatabaseConnection instance;
-    private Connection connection;
+    private static volatile DatabaseConnection instance;
 
    
     private static final String URL = "jdbc:sqlserver://localhost:1433;databaseName=QLHieuThuocTayMaiThuc;encrypt=true;trustServerCertificate=true";
     private static final String USER = "sa";
-    private static final String PASSWORD = "sapassword";
+    private static final String PASSWORD = "sapassword165";
 
   
     private DatabaseConnection() {
@@ -24,40 +23,33 @@ public class DatabaseConnection {
    
     public static DatabaseConnection getInstance() {
         if (instance == null) {
-            instance = new DatabaseConnection();
+            synchronized (DatabaseConnection.class) {
+                if (instance == null) {
+                    instance = new DatabaseConnection();
+                }
+            }
         }
         return instance;
     }
 
   
     public Connection getConnection() throws SQLException {
-        if (connection == null || connection.isClosed()) {
-            try {
-                connection = DriverManager.getConnection(URL, USER, PASSWORD);
-            } catch (SQLException e) {
-                System.err.println("Error connecting to database: " + e.getMessage());
-                throw e;
-            }
+        try {
+            return DriverManager.getConnection(URL, USER, PASSWORD);
+        } catch (SQLException e) {
+            System.err.println("Error connecting to database: " + e.getMessage());
+            throw e;
         }
-        return connection;
     }
 
   
     public void closeConnection() {
-        if (connection != null) {
-            try {
-                connection.close();
-                System.out.println("Database connection closed");
-            } catch (SQLException e) {
-                System.err.println("Error closing connection: " + e.getMessage());
-            }
-        }
+        // Connections are created per request and closed by DAO try-with-resources blocks.
     }
 
   
     public boolean testConnection() {
-        try {
-            getConnection();
+        try (Connection connection = getConnection()) {
             return !connection.isClosed();
         } catch (SQLException e) {
             System.err.println("Connection test failed: " + e.getMessage());

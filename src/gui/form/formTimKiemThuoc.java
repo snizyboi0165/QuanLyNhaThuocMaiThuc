@@ -1,4 +1,4 @@
-﻿package gui.form;
+package gui.form;
 
 import java.awt.*;
 import java.sql.SQLException;
@@ -15,7 +15,7 @@ import dao.ThuocDAO;
 import entity.Thuoc;
 import gui.dialog.DialogChiTietThuoc;
 
-public class formTimKiemThuoc extends JPanel 
+public class FormTimKiemThuoc extends JPanel 
 {
     private JTextField txtMaThuoc, txtTenThuoc, txtDonViTinh, txtGiaBan, txtSoLuong, txtThanhPhan, txtXuatXu;
     private JButton btnTimKiem, btnLamMoi, btnXuatExcel, btnXemChiTiet;
@@ -30,7 +30,7 @@ public class formTimKiemThuoc extends JPanel
     private Font titleFont = new Font("Roboto", Font.BOLD, 24);
     private Font headerTableFont = new Font("Roboto", Font.BOLD, 16);
 
-    public formTimKiemThuoc() 
+    public FormTimKiemThuoc() 
     {
         thuocDAO = new ThuocDAO();
         initComponents();
@@ -63,7 +63,7 @@ public class formTimKiemThuoc extends JPanel
         lblTitle.setFont(titleFont);
         lblTitle.setForeground(Color.WHITE);
 
-        JLabel lblIcon = new JLabel(new FlatSVGIcon("./img/search.svg"));
+        JLabel lblIcon = new JLabel(new FlatSVGIcon(getClass().getResource("/img/search.svg")));
         lblIcon.setBorder(new EmptyBorder(0, 20, 0, 0));
 
         headerPanel.add(lblIcon, BorderLayout.WEST);

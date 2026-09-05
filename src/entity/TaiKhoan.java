@@ -50,10 +50,14 @@ public class TaiKhoan implements Serializable {
     }
     
     public void setMatKhau(String matKhau) {
-        if (matKhau == null || !matKhau.matches(REGEX_MAT_KHAU)) {
-            throw new IllegalArgumentException("Mật khẩu phải trên 6 ký tự bao gồm: chữ cái, số, ký tự đặc biệt");
+        if (matKhau == null || matKhau.trim().isEmpty()) {
+            throw new IllegalArgumentException("Mật khẩu không được rỗng");
         }
         this.matKhau = matKhau;
+    }
+
+    public static boolean isValidPasswordFormat(String matKhau) {
+        return matKhau != null && matKhau.matches(REGEX_MAT_KHAU);
     }
     
     public void setTrangThai(String trangThai) {
